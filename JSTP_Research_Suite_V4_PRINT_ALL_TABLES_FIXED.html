@@ -1,0 +1,2730 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSTP Research Suite V4 - ระบบบันทึกผลการทดลอง 13 ตารางและบัญชีทุนวิจัย</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Prompt & Sarabun -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Chart.js for Scientific Visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Tailwind Configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            prompt: ['Prompt', 'sans-serif'],
+            sarabun: ['Sarabun', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          },
+          colors: {
+            jstp: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom CSS for Responsive Tables and Print -->
+  <style>
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+    }
+    h1, h2, h3, h4, .font-heading {
+      font-family: 'Prompt', sans-serif;
+    }
+    .table-container {
+      overflow-x: auto;
+      border-radius: 0.75rem;
+      border: 1px solid #e2e8f0;
+      background-color: #ffffff;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+    .data-table th {
+      background-color: #f1f5f9;
+      color: #334155;
+      font-weight: 600;
+      padding: 0.75rem 0.6rem;
+      border-bottom: 2px solid #cbd5e1;
+      white-space: nowrap;
+      font-family: 'Prompt', sans-serif;
+      font-size: 0.8125rem;
+    }
+    .data-table td {
+      padding: 0.5rem 0.5rem;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+    .data-table tr:hover {
+      background-color: #f8fafc;
+    }
+    .cell-input {
+      width: 100%;
+      padding: 0.35rem 0.5rem;
+      border-radius: 0.375rem;
+      border: 1px solid #cbd5e1;
+      background-color: #ffffff;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 0.875rem;
+      color: #1e293b;
+      transition: all 0.15s ease-in-out;
+    }
+    .cell-input:focus {
+      outline: none;
+      border-color: #16a34a;
+      box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
+      background-color: #ffffff;
+    }
+    .mini-sub-input {
+      width: 100%;
+      padding: 0.2rem 0.35rem;
+      border-radius: 0.25rem;
+      border: 1px solid #cbd5e1;
+      background-color: #ffffff;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 0.75rem;
+      color: #1e293b;
+      transition: all 0.15s;
+    }
+    .mini-sub-input:focus {
+      outline: none;
+      border-color: #16a34a;
+      background-color: #ffffff;
+    }
+    
+    /* Viewer Mode Locks */
+    body.role-viewer .cell-input,
+    body.role-viewer .mini-sub-input,
+    body.role-viewer .meta-input {
+      background-color: transparent !important;
+      border-color: transparent !important;
+      pointer-events: auto !important;
+      user-select: text !important;
+      cursor: text !important;
+      color: #334155;
+    }
+    body.role-viewer .editor-only-btn {
+      display: none !important;
+    }
+
+    /* Viewer mode: fields remain non-editable but can be horizontally scrolled. */
+    body.role-viewer .cell-input,
+    body.role-viewer .mini-sub-input,
+    body.role-viewer .meta-input {
+      pointer-events: auto !important;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      cursor: text !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      text-overflow: clip !important;
+    }
+
+    body.role-viewer .data-table td,
+    body.role-viewer .data-table th {
+      overflow: visible !important;
+      text-overflow: clip !important;
+    }
+
+    /* Print Optimization */
+    @media print {
+      @page { size: A4 portrait; margin: 10mm; }
+      .no-print, .editor-only-btn, .fa-trash-can { display: none !important; }
+      body { background: white !important; padding: 0 !important; }
+      /* Keep each table heading + its table together whenever the whole table can fit on a page. */
+      .table-card {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        -webkit-column-break-inside: avoid !important;
+        margin-bottom: 1rem !important;
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+      .table-card > div:first-child {
+        break-after: avoid-page !important;
+        page-break-after: avoid !important;
+      }
+      .table-card h3,
+      .table-card p {
+        break-after: avoid-page !important;
+        page-break-after: avoid !important;
+      }
+      .cell-input, .mini-sub-input, .meta-input { border: none !important; padding: 0 !important; background-color: transparent !important; }
+      .table-container { overflow: visible !important; width: 100% !important; }
+      .data-table { table-layout: auto !important; width: 100% !important; max-width: 100% !important; }
+      .data-table th, .data-table td {
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        hyphens: none !important;
+        padding: 0.3rem 0.25rem !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        vertical-align: top !important;
+      }
+      #sec-t7 .data-table { table-layout: fixed !important; }
+
+      /* ตารางที่ 11: ล็อกความกว้างตามกรอบตาราง และบังคับข้อความยาวให้ขึ้นบรรทัดใหม่ */
+      #sec-t11 .table-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+      }
+      #sec-t11 .data-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
+      }
+      #sec-t11 .data-table th,
+      #sec-t11 .data-table td {
+        min-width: 0 !important;
+        max-width: none !important;
+        width: auto !important;
+        white-space: normal !important;
+        overflow: hidden !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        box-sizing: border-box !important;
+      }
+      #sec-t11 .data-table th:nth-child(1),
+      #sec-t11 .data-table td:nth-child(1) { width: 16% !important; }
+      #sec-t11 .data-table th:nth-child(2),
+      #sec-t11 .data-table td:nth-child(2),
+      #sec-t11 .data-table th:nth-child(3),
+      #sec-t11 .data-table td:nth-child(3),
+      #sec-t11 .data-table th:nth-child(4),
+      #sec-t11 .data-table td:nth-child(4),
+      #sec-t11 .data-table th:nth-child(5),
+      #sec-t11 .data-table td:nth-child(5) { width: 14% !important; }
+      #sec-t11 .data-table th:nth-child(6),
+      #sec-t11 .data-table td:nth-child(6) { width: 28% !important; }
+      #sec-t11 .print-full-value {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        white-space: pre-wrap !important;
+        overflow: visible !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        line-height: 1.35 !important;
+      }
+
+      .data-table th { font-size: 0.75rem !important; }
+      .data-table td { font-size: 0.75rem !important; }
+      .cell-input { font-size: 0.75rem !important; }
+      .mini-sub-input { font-size: 0.65rem !important; word-wrap: break-word !important; white-space: normal !important; }
+    }
+
+
+    /* ===== FINAL TEXT VISIBILITY / SCROLL FIX =====
+       Applied globally to ALL JSTP tables, including the JSTP project-information area. */
+    html, body { max-width: 100%; overflow-x: hidden; }
+
+    /* Every table gets its own horizontal scrolling area when necessary. */
+    .table-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow-x: auto !important;
+      overflow-y: visible !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior-x: contain;
+      scrollbar-width: auto;
+    }
+
+    /* Let tables become wider than the screen instead of shrinking/clipping cells. */
+    .table-container .data-table {
+      width: max-content !important;
+      min-width: 100% !important;
+      max-width: none !important;
+      table-layout: auto !important;
+    }
+
+    .data-table th,
+    .data-table td {
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      overflow-wrap: break-word !important;
+      word-break: normal !important;
+      hyphens: none !important;
+      height: auto !important;
+      min-height: 0 !important;
+      vertical-align: top !important;
+    }
+
+    /* Keep useful room for every column. The whole table can be swiped if it is wider. */
+    .data-table th { min-width: 120px; }
+    .data-table td { min-width: 120px; }
+
+    /* Text-bearing table cells get a readable maximum width so long sentences wrap. */
+    .data-table td:not(:has(input)):not(:has(select)) {
+      max-width: 460px;
+    }
+
+    /* Form controls: do NOT clip their values. Long values can be swiped horizontally. */
+    .data-table .cell-input,
+    .data-table .mini-sub-input,
+    .data-table td > input,
+    .data-table td > select,
+    .data-table td > textarea {
+      box-sizing: border-box !important;
+      max-width: none !important;
+      min-width: 220px !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      text-overflow: clip !important;
+      white-space: nowrap !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* Wider text fields so the common long Thai values are readable before swiping. */
+    .data-table .cell-input[type="text"],
+    .data-table .cell-input[type="url"],
+    .data-table .mini-sub-input[type="text"] {
+      min-width: 320px !important;
+    }
+
+    /* Number/date/select controls remain compact. */
+    .data-table .cell-input[type="number"],
+    .data-table .cell-input[type="date"],
+    .data-table .mini-sub-input[type="number"] {
+      min-width: 120px !important;
+    }
+
+    /* JSTP project title / author / advisor / school fields: never visually truncate. */
+    .meta-input {
+      box-sizing: border-box !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      overflow-x: auto !important;
+      text-overflow: clip !important;
+      white-space: nowrap !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* The print-only text versions always show complete wrapped content. */
+    #metaTitlePrint,
+    #metaAuthorsPrint,
+    #metaAdvisorPrint,
+    #metaSchoolPrint {
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      overflow-wrap: anywhere !important;
+      word-break: normal !important;
+    }
+
+    /* Do not let common Tailwind clipping utilities hide application data. */
+    .data-table .truncate,
+    .data-table .text-ellipsis,
+    .data-table .overflow-hidden {
+      overflow: visible !important;
+      text-overflow: clip !important;
+      white-space: normal !important;
+    }
+
+    /* Mobile: preserve a comfortable reading width; swipe the table rather than cutting it. */
+    @media (max-width: 768px) {
+      .table-container .data-table {
+        min-width: max-content !important;
+      }
+      .data-table th,
+      .data-table td {
+        padding-left: 0.7rem !important;
+        padding-right: 0.7rem !important;
+      }
+      .data-table td:not(:has(input)):not(:has(select)) {
+        max-width: 380px !important;
+      }
+      .data-table .cell-input[type="text"],
+      .data-table .cell-input[type="url"],
+      .data-table .mini-sub-input[type="text"] {
+        min-width: 280px !important;
+      }
+    }
+  
+/* COMPACT TABLE SPACING */
+.table-container { margin-bottom: 10px !important; padding: 0 !important; }
+.data-table { border-spacing: 0 !important; margin: 0 !important; }
+.data-table th, .data-table td { padding: 7px 9px !important; }
+.data-table + .data-table { margin-top: 8px !important; }
+.section-card { margin-bottom: 12px !important; }
+
+    /* FULL-TEXT PRINT OVERRIDE: never clip form values; allow wrapping and page breaks. */
+    @media print {
+      html, body {
+        width: 100% !important;
+        max-width: none !important;
+        overflow: visible !important;
+      }
+      .print-full-value {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        height: auto !important;
+        min-height: 1.2em !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        color: #111827 !important;
+        white-space: pre-wrap !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+        word-break: normal !important;
+        line-height: 1.35 !important;
+      }
+      .table-card {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+        overflow: visible !important;
+      }
+      .data-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: auto !important;
+        overflow: visible !important;
+      }
+      .data-table thead {
+        display: table-header-group !important;
+      }
+      .data-table tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      .data-table th, .data-table td {
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+        word-break: normal !important;
+        vertical-align: top !important;
+      }
+      .table-container {
+        width: 100% !important;
+        max-width: none !important;
+        overflow: visible !important;
+      }
+      /* Hide only controls/buttons that are explicitly marked as non-printing. */
+      .no-print, .editor-only-btn, .print\:hidden { display: none !important; }
+    }
+
+
+    /* ===== PRINT ALL TABLES / KEEP HEADINGS WITH TABLES ===== */
+    @media print {
+      /* Every table is treated the same way; no special case for table 11. */
+      .table-card {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        overflow: visible !important;
+      }
+      .table-card > div:first-child,
+      .table-card h3,
+      .table-card h4,
+      .table-card p {
+        break-after: avoid-page !important;
+        page-break-after: avoid !important;
+      }
+      .table-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+      }
+      .data-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+      }
+      .data-table thead {
+        display: table-header-group !important;
+      }
+      .data-table tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      .data-table th,
+      .data-table td {
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: auto !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        hyphens: none !important;
+        vertical-align: top !important;
+      }
+      .print-full-value {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        box-sizing: border-box !important;
+        white-space: pre-wrap !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        line-height: 1.35 !important;
+      }
+      /* All original form controls are hidden only for print; their full values
+         are represented by .print-full-value blocks created by printReport(). */
+      .data-table input,
+      .data-table textarea,
+      .data-table select {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      /* Remove the old table-11-only width rules by forcing every section to obey
+         the same page-width constraints. */
+      [id^="sec-t"] .table-container,
+      [id^="sec-t"] .data-table {
+        max-width: 100% !important;
+      }
+    }
+</style>
+</head>
+<body class="role-editor">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-jstp-600 to-emerald-700 text-white flex items-center justify-center text-xl shadow-md">
+          <i class="fa-solid fa-microscope"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold font-prompt text-slate-800 text-base sm:text-lg leading-none">JSTP Science Suite V4</h1>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-jstp-100 text-jstp-800 border border-jstp-300">13 ตารางครบถ้วน</span>
+          </div>
+          <p class="text-[11px] text-slate-500 font-sarabun mt-0.5">ระบบบันทึกผลการทดลองกระถางชีวภาพ & บัญชีทุนวิจัย</p>
+        </div>
+      </div>
+
+      <!-- Quick Actions and Role Status -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Quick Jump to Table Dropdown -->
+        <div class="relative hidden md:block">
+          <select id="quickJumpSelect" onchange="jumpToTable(this.value)" class="text-xs bg-slate-100 border border-slate-300 text-slate-700 rounded-lg px-2.5 py-1.5 font-prompt focus:outline-none focus:ring-2 focus:ring-jstp-500">
+            <option value="">⚡ ข้ามไปยังตาราง...</option>
+            <option value="sec-t1">ตารางที่ 1: ลักษณะทางกายภาพ</option>
+            <option value="sec-t2">ตารางที่ 2: ปริมาณน้ำคงเหลือ</option>
+            <option value="sec-t3">ตารางที่ 3: % การอุ้มน้ำ</option>
+            <option value="sec-t4">ตารางที่ 4: ความแข็งแรง</option>
+            <option value="sec-t5">ตารางที่ 5: ความคงทนการเคลื่อนย้าย</option>
+            <option value="sec-t6">ตารางที่ 6: การงอกของเมล็ด</option>
+            <option value="sec-t7">ตารางที่ 7: การเติบโตของพืช</option>
+            <option value="sec-t8">ตารางที่ 8: สรุปค่าเฉลี่ยการเติบโต</option>
+            <option value="sec-t9">ตารางที่ 9: การย่อยสลายรายสัปดาห์</option>
+            <option value="sec-t10">ตารางที่ 10: ระยะเวลาย่อยสลาย</option>
+            <option value="sec-t11">ตารางที่ 11: เปรียบเทียบประสิทธิภาพ</option>
+            <option value="sec-t12">ตารางที่ 12: สรุปผลคะแนนรวม</option>
+            <option value="sec-t13">ตารางที่ 13: วิเคราะห์ต้นทุน</option>
+            <option value="sec-budget">💰 บัญชีทุนวิจัย & ใบเสร็จ</option>
+          </select>
+        </div>
+
+        <!-- Role Badge & Toggle Button -->
+        <div id="roleBadgeContainer" class="flex items-center">
+          <!-- Dynamically Rendered -->
+        </div>
+
+        <!-- Save All Button -->
+        <button onclick="manualSaveAll()" class="px-3.5 py-1.5 rounded-lg bg-jstp-600 hover:bg-jstp-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">บันทึกข้อมูล</span>
+        </button>
+
+        <!-- Print PDF Button -->
+        <button id="btnPrintReport" type="button" onclick="printReport()" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs transition" title="พิมพ์รายงาน">
+          <i class="fa-solid fa-print"></i>
+        </button>
+
+        <!-- Backup & Restore Dropdown Trigger -->
+        <button onclick="toggleBackupMenu()" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs transition" title="สำรองและกู้คืน">
+          <i class="fa-solid fa-ellipsis-vertical"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Backup Dropdown Popup -->
+    <div id="backupMenu" class="hidden absolute right-4 top-16 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-50 w-52 text-xs font-prompt no-print">
+      <button onclick="exportJSONBackup()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 flex items-center gap-2 text-slate-700">
+        <i class="fa-solid fa-download text-jstp-600"></i> ส่งออกไฟล์สำรอง (JSON)
+      </button>
+      <label class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 flex items-center gap-2 text-slate-700 cursor-pointer">
+        <i class="fa-solid fa-upload text-blue-600"></i> นำเข้าไฟล์สำรอง (JSON)
+        <input type="file" id="importFileInput" onchange="importJSONBackup(event)" class="hidden" accept=".json">
+      </label>
+      <div class="border-t border-slate-100 my-1"></div>
+      <button onclick="confirmResetDefaults()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 flex items-center gap-2">
+        <i class="fa-solid fa-rotate-left"></i> รีเซ็ตเป็นข้อมูลตั้งต้น
+      </button>
+    </div>
+
+    <!-- Role Status Banner -->
+    <div id="statusNotificationBanner" class="bg-emerald-50 border-t border-emerald-200 px-4 py-1.5 text-xs text-center font-prompt flex items-center justify-center gap-3">
+      <span id="statusText" class="text-emerald-800 font-medium">
+        <i class="fa-solid fa-pen-to-square text-emerald-600 mr-1"></i> โหมดแก้ไข (Editor): คุณสามารถเพิ่ม ลบ และพิมพ์แก้ไขทุกตารางได้โดยตรง
+      </span>
+      <span id="saveTimestamp" class="text-slate-500 text-[11px] hidden sm:inline">บันทึกอัตโนมัติเรียบร้อย</span>
+    </div>
+
+    <!-- Navigation Views Tab -->
+    <div class="bg-slate-50 border-t border-slate-200 overflow-x-auto">
+      <div class="max-w-7xl mx-auto px-4 flex items-center gap-1.5 py-1.5 text-xs font-prompt whitespace-nowrap">
+        <button onclick="setViewMode('all')" id="btnViewAll" class="px-3 py-1.5 rounded-lg bg-jstp-700 text-white font-semibold flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-table-list"></i> แสดงทั้ง 13 ตาราง (หน้าเดียว)
+        </button>
+        <button onclick="setViewMode('category')" id="btnViewCategory" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-200 font-semibold flex items-center gap-1.5">
+          <i class="fa-solid fa-folder-tree"></i> แยกตามหมวดหมู่การทดลอง
+        </button>
+        <div class="h-4 w-px bg-slate-300 mx-1"></div>
+        <!-- Category Tab Buttons -->
+        <div id="categoryTabs" class="flex gap-1">
+          <button onclick="switchCategory('cat-physical')" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">1. กายภาพ & ความแข็งแรง</button>
+          <button onclick="switchCategory('cat-water')" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">2. การอุ้มน้ำ</button>
+          <button onclick="switchCategory('cat-growth')" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">3. การเติบโตของพืช</button>
+          <button onclick="switchCategory('cat-decay')" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">4. การย่อยสลาย</button>
+          <button onclick="switchCategory('cat-summary')" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">5. สรุปผล & ต้นทุน</button>
+          <button onclick="switchCategory('cat-budget')" class="cat-btn px-2.5 py-1 rounded-md text-rose-700 hover:bg-rose-100 font-bold"><i class="fa-solid fa-coins mr-1"></i>บัญชีทุนวิจัย</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== HERO / COVER LANDING BANNER (หน้าปกเว็บ) ==================== -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 no-print">
+    <section id="sec-hero" class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 text-white rounded-3xl shadow-xl p-6 sm:p-10 border border-emerald-800/40">
+      <!-- Ambient Glow Elements -->
+      <div class="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-teal-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+        <!-- Left Banner Content -->
+        <div class="w-full lg:w-7/12 space-y-5 text-center lg:text-left">
+          <!-- Institution Logo Only (Removed Partner Logo 1 & 2) -->
+          <div class="flex items-center justify-center lg:justify-start gap-3 sm:gap-4 flex-wrap bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl w-fit mx-auto lg:mx-0 border border-white/15">
+            <img src="2.jpg" alt="JSTP Logo" class="h-9 sm:h-11 object-contain drop-shadow-md">
+            <span class="text-[11px] font-bold tracking-wider text-emerald-300 font-prompt border-l border-white/20 pl-3">JSTP RESEARCH</span>
+          </div>
+
+          <!-- Main Hero Title -->
+          <div class="space-y-2">
+            <span class="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold font-prompt border border-emerald-400/30">
+              <i class="fa-solid fa-leaf text-emerald-400 mr-1.5"></i> นวัตกรรมกระถางชีวภาพย่อยสลายได้ 100%
+            </span>
+            <h1 class="text-2xl sm:text-4xl lg:text-5xl font-extrabold font-prompt leading-tight text-white">
+              ระบบบันทึกผลการทดลอง <br class="hidden sm:inline">
+              <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-green-400">
+                กระถางชีวภาพ & ทุนวิจัย JSTP
+              </span>
+            </h1>
+          </div>
+
+          <p class="text-slate-300 text-xs sm:text-sm font-sarabun leading-relaxed max-w-2xl mx-auto lg:mx-0">
+            ระบบจัดเก็บ วิเคราะห์ และบันทึกผลการทดลองทางวิทยาศาสตร์ครบถ้วน 13 ตารางมาตรฐาน ครอบคลุมคุณสมบัติทางกายภาพ การอุ้มน้ำ ความแข็งแรง การเติบโต การย่อยสลาย พร้อมระบบบริหารจัดการบัญชีทุนวิจัย
+          </p>
+
+          <!-- Quick Navigation Actions -->
+          <div class="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
+            <button onclick="jumpToTable('sec-meta')" class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-prompt font-semibold text-sm shadow-lg shadow-emerald-900/40 flex items-center gap-2 transition-all transform hover:-translate-y-0.5">
+              <i class="fa-solid fa-arrow-down"></i> เลื่อนลงเข้าสู่ตารางการทดลอง
+            </button>
+            <button onclick="jumpToTable('sec-budget')" class="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-prompt font-semibold text-sm border border-white/20 flex items-center gap-2 transition-all">
+              <i class="fa-solid fa-coins text-amber-400"></i> บัญชีทุนวิจัย
+            </button>
+          </div>
+
+          <!-- Feature Highlights -->
+          <div class="grid grid-cols-3 gap-3 pt-4 border-t border-white/10 max-w-lg mx-auto lg:mx-0">
+            <div class="text-center lg:text-left">
+              <div class="text-lg sm:text-xl font-bold font-prompt text-emerald-400">13 ตาราง</div>
+              <div class="text-[11px] text-slate-400 font-sarabun">บันทึกผลมาตรฐาน</div>
+            </div>
+            <div class="text-center lg:text-left border-x border-white/10 px-2">
+              <div class="text-lg sm:text-xl font-bold font-prompt text-teal-300">100% Eco</div>
+              <div class="text-[11px] text-slate-400 font-sarabun">วัสดุชีวภาพธรรมชาติ</div>
+            </div>
+            <div class="text-center lg:text-left">
+              <div class="text-lg sm:text-xl font-bold font-prompt text-amber-300">Auto Calc</div>
+              <div class="text-[11px] text-slate-400 font-sarabun">คำนวณกราฟ & งบ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Gallery Card (Showing ONLY 1 Creator Photo) -->
+        <div class="w-full lg:w-5/12 flex justify-center lg:justify-end">
+          <div class="w-full max-w-xs sm:max-w-sm group relative overflow-hidden rounded-2xl border border-white/20 shadow-2xl bg-slate-800">
+            <img src="1.png" alt="ผู้ทำโครงงาน" class="w-full h-150 sm:h-150 object-cover object-center transition-transform duration-500 group-hover:scale-105">
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-transparent flex items-end p-4">
+              <div class="text-white">
+                <span class="text-xs font-prompt font-semibold text-emerald-400 flex items-center gap-1.5">
+                  <i class="fa-solid fa-user-graduate"></i> ผู้จัดทำโครงงาน
+                </span>
+                <p class="text-sm font-prompt font-bold text-white mt-0.5">นักเรียนผู้จัดทำโครงงาน JSTP</p>
+                <p class="text-sm font-prompt font-bold text-white mt-0.5">นายทินภัทร แย้มคำ</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="w-full max-w-xs sm:max-w-sm mt-4 rounded-2xl border border-emerald-400/20 bg-white/10 backdrop-blur-md p-4 shadow-xl">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
+              <i class="fa-solid fa-address-card"></i>
+            </div>
+            <div>
+              <h3 class="font-prompt font-bold text-white text-sm">ข้อมูลการติดต่อ</h3>
+              <p class="font-sarabun text-[10px] text-slate-300">สำหรับติดต่อผู้จัดทำโครงงาน</p>
+            </div>
+          </div>
+          <div class="space-y-2.5 text-xs font-sarabun">
+            <a href="tel:0909334143" class="flex items-center gap-3 text-slate-200 hover:text-emerald-300 transition">
+              <i class="fa-solid fa-phone w-4 text-center text-emerald-400"></i>
+              <span>090-933-4143</span>
+            </a>
+            <a href="mailto:thinnapat.tankoon@gmail.com" class="flex items-center gap-3 text-slate-200 hover:text-emerald-300 transition break-all">
+              <i class="fa-solid fa-envelope w-4 text-center text-emerald-400"></i>
+              <span>thinnapat.tankoon@gmail.com</span>
+            </a>
+            <div class="flex items-center gap-3 text-slate-200">
+              <i class="fa-brands fa-line w-4 text-center text-emerald-400"></i>
+              <span>ID Line: tan_kun5152</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Project Information Card -->
+    <section id="sec-meta" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm relative overflow-hidden table-card">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
+        <div class="w-full">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-jstp-600 bg-jstp-50 px-2 py-0.5 rounded border border-jstp-200">โครงงานวิทยาศาสตร์และเทคโนโลยี JSTP</span>
+          
+          <input type="text" id="metaTitle" onchange="updateMeta('title', this.value)" oninput="document.getElementById('metaTitlePrint').innerText = this.value" class="w-full bg-transparent font-bold border-b border-transparent hover:border-slate-300 focus:border-jstp-500 focus:outline-none transition py-0.5 mt-1 text-xl sm:text-2xl font-prompt text-slate-800 meta-input print:hidden" value="">
+          <div id="metaTitlePrint" class="hidden print:block w-full text-xl font-bold font-prompt text-slate-800 mt-1 break-words whitespace-normal leading-tight"></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+          <span class="text-slate-400 font-medium block mb-1">คณะผู้จัดทำโครงงาน:</span>
+          <input type="text" id="metaAuthors" onchange="updateMeta('authors', this.value)" oninput="document.getElementById('metaAuthorsPrint').innerText = this.value" class="w-full bg-transparent font-semibold text-slate-800 focus:outline-none focus:text-jstp-600 meta-input print:hidden" value="">
+          <div id="metaAuthorsPrint" class="hidden print:block w-full font-semibold text-slate-800 whitespace-normal break-words"></div>
+        </div>
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+          <span class="text-slate-400 font-medium block mb-1">อาจารย์ที่ปรึกษาโครงงาน:</span>
+          <input type="text" id="metaAdvisor" onchange="updateMeta('advisor', this.value)" oninput="document.getElementById('metaAdvisorPrint').innerText = this.value" class="w-full bg-transparent font-semibold text-slate-800 focus:outline-none focus:text-jstp-600 meta-input print:hidden" value="">
+          <div id="metaAdvisorPrint" class="hidden print:block w-full font-semibold text-slate-800 whitespace-normal break-words"></div>
+        </div>
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+          <span class="text-slate-400 font-medium block mb-1">สถาบัน / โรงเรียน:</span>
+          <input type="text" id="metaSchool" onchange="updateMeta('school', this.value)" oninput="document.getElementById('metaSchoolPrint').innerText = this.value" class="w-full bg-transparent font-semibold text-slate-800 focus:outline-none focus:text-jstp-600 meta-input print:hidden" value="">
+          <div id="metaSchoolPrint" class="hidden print:block w-full font-semibold text-slate-800 whitespace-normal break-words"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 1: ลักษณะทางกายภาพของกระถางชีวภาพ -->
+    <section id="sec-t1" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-physical">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 font-bold text-xs flex items-center justify-center">1</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 1 บันทึกลักษณะทางกายภาพของกระถางชีวภาพ</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">บันทึกสี ความหนา น้ำหนัก ลักษณะพื้นผิว และความแข็งแรงเบื้องต้นก่อนการทดลอง</p>
+        </div>
+        <button onclick="addRowT1()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 1
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-48">สูตรการทดลอง</th>
+              <th class="w-32">สี</th>
+              <th class="w-28 text-center">ความหนา (ซม.)</th>
+              <th class="w-28 text-center">น้ำหนัก (กรัม)</th>
+              <th>ลักษณะพื้นผิว</th>
+              <th>ความแข็งแรงเบื้องต้น</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT1"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 2: ปริมาณน้ำที่เหลืออยู่ในกระถาง -->
+    <section id="sec-t2" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-water">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center">2</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 2 บันทึกปริมาณน้ำที่เหลืออยู่ในกระถาง (มล. / กรัม)</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">วัดปริมาณน้ำที่คงค้างในกระถางหลังการเติมน้ำที่ 1, 3 และ 6 ชั่วโมง</p>
+        </div>
+        <button onclick="addRowT2()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 2
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-48">สูตรการทดลอง</th>
+              <th class="w-32 text-center">น้ำหนักก่อนเติมน้ำ (กรัม/มล.)</th>
+              <th class="w-28 text-center">หลัง 1 ชม.</th>
+              <th class="w-28 text-center">หลัง 3 ชม.</th>
+              <th class="w-28 text-center">หลัง 6 ชม.</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT2"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 3: คำนวณเปอร์เซ็นต์การอุ้มน้ำ (%) -->
+    <section id="sec-t3" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-water">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center">3</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 3 คำนวณเปอร์เซ็นต์การอุ้มน้ำ (%)</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">คำนวณอัตราส่วนการอุ้มน้ำเทียบกับน้ำหนักเริ่มต้น หรือกรอกข้อมูลโดยตรง</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="calculateTable3FromTable2()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-calculator"></i> คำนวณ % จากตารางที่ 2 อัตโนมัติ
+          </button>
+          <button onclick="addRowT3()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 3
+          </button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-48">สูตรการทดลอง</th>
+              <th class="w-32 text-center">% หลัง 1 ชม.</th>
+              <th class="w-32 text-center">% หลัง 3 ชม.</th>
+              <th class="w-32 text-center">% หลัง 6 ชม.</th>
+              <th class="w-32 text-center bg-blue-50/70 font-bold text-blue-900">ค่าเฉลี่ย (%)</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT3"></tbody>
+        </table>
+      </div>
+
+      <!-- Water Retention Chart -->
+      <div class="mt-6 pt-4 border-t border-slate-100">
+        <h4 class="font-bold font-prompt text-slate-700 text-sm mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-chart-simple text-blue-600"></i> แผนภูมิเปรียบเทียบเปอร์เซ็นต์การอุ้มน้ำเฉลี่ยของแต่ละสูตร
+        </h4>
+        <div class="h-64 sm:h-72 w-full">
+          <canvas id="chartWaterRetention"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 4: ผลการทดสอบความแข็งแรง -->
+    <section id="sec-t4" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-physical">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 font-bold text-xs flex items-center justify-center">4</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 4 บันทึกผลการทดสอบความแข็งแรง (การรับน้ำหนัก)</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">ทดสอบการรับน้ำหนักตุ้มน้ำหนัก 500g, 1000g, 1500g และสังเกตการแตก เสียรูป ยุบตัว</p>
+        </div>
+        <button onclick="addRowT4()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 4
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-48">สูตรการทดลอง</th>
+              <th class="w-28 text-center">500 กรัม</th>
+              <th class="w-28 text-center">1,000 กรัม</th>
+              <th class="w-28 text-center">1,500 กรัม</th>
+              <th>การแตกร้าว</th>
+              <th>การเสียรูป</th>
+              <th>การยุบตัว</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT4"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 5: ความคงทนต่อการเคลื่อนย้าย -->
+    <section id="sec-t5" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-physical">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 font-bold text-xs flex items-center justify-center">5</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 5 บันทึกความคงทนต่อการเคลื่อนย้าย</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">ทดสอบการยก ย้ายตำแหน่ง สังเกตการเกิดรอยร้าว และสภาพกระถางหลังทดลอง</p>
+        </div>
+        <button onclick="addRowT5()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 5
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-48">สูตรการทดลอง</th>
+              <th class="w-32 text-center">จำนวนครั้งที่เคลื่อนย้าย</th>
+              <th>รอยแตกร้าว</th>
+              <th>การเสียรูป</th>
+              <th>สภาพกระถางหลังทดลอง</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT5"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 6: การงอกของเมล็ดถั่วเขียว -->
+    <section id="sec-t6" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-growth">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center">6</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 6 บันทึกการงอกของเมล็ดถั่วเขียว</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">คำนวณร้อยละการงอกของเมล็ดพันธุ์ในแต่ละสูตรกระถาง</p>
+        </div>
+        <button onclick="addRowT6()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 6
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-48">สูตรการทดลอง</th>
+              <th class="w-36 text-center">จำนวนเมล็ดที่ปลูก</th>
+              <th class="w-36 text-center">จำนวนเมล็ดที่งอก</th>
+              <th class="w-36 text-center bg-emerald-50/70 text-emerald-900 font-bold">ร้อยละการงอก (%)</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT6"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 7: บันทึกการเจริญเติบโตของพืชอย่างละเอียด -->
+    <section id="sec-t7" class="bg-white rounded-2xl p-5 sm:p-6 border border-emerald-200 shadow-sm border-t-4 border-t-emerald-500 table-card cat-growth">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-4 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+              <i class="fa-solid fa-seedling"></i>
+            </div>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 7 บันทึกการเจริญเติบโตของพืชอย่างละเอียด</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">ตารางสำหรับกรอกข้อมูลการเจริญเติบโตของทุกสูตรไปพร้อมๆ กันในแต่ละช่วงเวลา</p>
+          <p class="text-[11px] font-bold text-rose-600 mt-1">* บันทึกผลการทดลองทุกๆ 3 วัน *</p>
+        </div>
+      </div>
+
+      <!-- Add Growth Round Form -->
+      <div class="editor-only-btn bg-slate-50 p-5 rounded-xl border border-slate-200 mb-6 no-print">
+        <h4 class="font-bold font-prompt text-slate-800 text-sm mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-calendar-plus text-emerald-600"></i> เพิ่มรอบการบันทึกผลใหม่
+        </h4>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <div class="w-48">
+            <label class="block font-semibold text-slate-600 mb-1">วันที่ (วัน เดือน ปี):</label>
+            <input type="date" id="newT7Date" onchange="autoGenerateT7Round()" class="w-full cell-input">
+          </div>
+          <div class="w-32">
+            <label class="block font-semibold text-slate-600 mb-1">ครั้งที่ (ออโต้):</label>
+            <input type="text" id="newT7Round" readonly class="w-full cell-input bg-slate-200/80 font-mono font-bold text-emerald-700 text-center">
+          </div>
+          <div>
+            <button onclick="addNewT7Row()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-prompt text-xs font-semibold shadow-sm transition inline-flex items-center gap-2 h-[34px]">
+              <i class="fa-solid fa-plus"></i> เพิ่มรอบบันทึก
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-28 text-center bg-emerald-50 print:w-[12%]">ครั้งที่ / วันที่</th>
+              <th class="sm:min-w-[200px] print:min-w-0 print:w-[22%]">ตารางกรอกข้อมูลสูตรที่ 1</th>
+              <th class="sm:min-w-[200px] print:min-w-0 print:w-[22%]">ตารางกรอกข้อมูลสูตรที่ 2</th>
+              <th class="sm:min-w-[200px] print:min-w-0 print:w-[22%]">ตารางกรอกข้อมูลสูตรที่ 3</th>
+              <th class="sm:min-w-[200px] print:min-w-0 print:w-[22%]">ตารางกรอกข้อมูลชุดควบคุม</th>
+              <th class="w-16 text-center editor-only-btn bg-emerald-50 print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT7"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 8: สรุปค่าเฉลี่ยการเจริญเติบโตของพืช -->
+    <section id="sec-t8" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-growth">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center">8</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 8 สรุปค่าเฉลี่ยการเจริญเติบโตของพืช</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">สรุปความสูงเฉลี่ย จำนวนใบเฉลี่ย และการประเมินระดับความสมบูรณ์</p>
+        </div>
+        <button onclick="addRowT8()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 8
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-48">สูตรการทดลอง</th>
+              <th class="w-36 text-center">ความสูงเฉลี่ย (ซม.)</th>
+              <th class="w-36 text-center">จำนวนใบเฉลี่ย</th>
+              <th>ระดับความสมบูรณ์ของต้น</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT8"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 9: บันทึกการย่อยสลายของกระถาง (รายสัปดาห์) -->
+    <section id="sec-t9" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-decay">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-teal-100 text-teal-800 font-bold text-xs flex items-center justify-center">9</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 9 บันทึกการย่อยสลายของกระถาง (รายสัปดาห์)</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">สังเกตการเปลี่ยนสี การแตกสลาย การเปื่อยยุ่ย และการเกิดเชื้อราตามช่วงสัปดาห์</p>
+        </div>
+        <button onclick="addRowT9()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 9
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-32">สัปดาห์ที่</th>
+              <th class="w-48">สูตรการทดลอง</th>
+              <th>การเปลี่ยนสี</th>
+              <th>การแตกสลาย</th>
+              <th>การเปื่อยยุ่ย</th>
+              <th>การเกิดเชื้อรา</th>
+              <th>หมายเหตุ</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT9"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 10: บันทึกระยะเวลาการย่อยสลาย -->
+    <section id="sec-t10" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-decay">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-teal-100 text-teal-800 font-bold text-xs flex items-center justify-center">10</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 10 บันทึกระยะเวลาการย่อยสลาย</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">บันทึกจำนวนวันตั้งแต่เริ่มเสื่อมสภาพ เริ่มแตกสลาย จนถึงย่อยสลายเกือบสมบูรณ์</p>
+        </div>
+        <button onclick="addRowT10()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 10
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-48">สูตรการทดลอง</th>
+              <th class="w-36 text-center">เริ่มเสื่อมสภาพ (วัน)</th>
+              <th class="w-36 text-center">เริ่มแตกสลาย (วัน)</th>
+              <th class="w-44 text-center">ย่อยสลายเกือบสมบูรณ์ (วัน)</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT10"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 11: สรุปผลการเปรียบเทียบประสิทธิภาพของกระถางชีวภาพ -->
+    <section id="sec-t11" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-summary">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 font-bold text-xs flex items-center justify-center">11</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 11 สรุปผลการเปรียบเทียบประสิทธิภาพของกระถางชีวภาพ</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">เปรียบเทียบแต่ละหัวข้อคุณสมบัติระหว่างแต่ละสูตรกับถุงเพาะชำพลาสติกเดิม</p>
+        </div>
+        <button onclick="addRowT11()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 11
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-48">หัวข้อเปรียบเทียบ</th>
+              <th>สูตรที่ 1</th>
+              <th>สูตรที่ 2</th>
+              <th>สูตรที่ 3</th>
+              <th>ถุงพลาสติก (Control)</th>
+              <th>สรุปผลเปรียบเทียบ</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT11"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 12: สรุปผลค่าเฉลี่ยรวมและระดับประสิทธิภาพ -->
+    <section id="sec-t12" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-summary">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 font-bold text-xs flex items-center justify-center">12</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 12 สรุปผลค่าเฉลี่ยรวมและระดับประสิทธิภาพ</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">รวมคะแนนค่าเฉลี่ยในแต่ละด้าน และจัดระดับประสิทธิภาพโดยรวม</p>
+        </div>
+        <button onclick="addRowT12()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 12
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-48">สูตรการทดลอง</th>
+              <th class="w-32 text-center">ค่าเฉลี่ยการอุ้มน้ำ</th>
+              <th class="w-32 text-center">ค่าเฉลี่ยความแข็งแรง</th>
+              <th class="w-32 text-center">ค่าเฉลี่ยการเจริญเติบโต</th>
+              <th class="w-32 text-center">ค่าเฉลี่ยการย่อยสลาย</th>
+              <th class="w-40 text-center bg-indigo-50/70 text-indigo-900 font-bold">ระดับประสิทธิภาพรวม</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT12"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางที่ 13: วิเคราะห์ต้นทุนการผลิตกระถางชีวภาพ -->
+    <section id="sec-t13" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm table-card cat-summary">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 font-bold text-xs flex items-center justify-center">13</span>
+            <h3 class="font-bold font-prompt text-slate-800 text-base sm:text-lg">ตารางที่ 13 วิเคราะห์ต้นทุนการผลิตกระถางชีวภาพ</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">คำนวณต้นทุนต่อกระถาง และวิเคราะห์ความคุ้มค่าในเชิงสิ่งแวดล้อมและเศรษฐศาสตร์</p>
+        </div>
+        <button onclick="addRowT13()" class="editor-only-btn px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i> เพิ่มแถวในตารางที่ 13
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-48">สูตรการทดลอง</th>
+              <th class="w-36 text-center">ต้นทุนวัสดุรวม (บาท)</th>
+              <th class="w-36 text-center">จำนวนที่ผลิตได้ (ใบ)</th>
+              <th class="w-36 text-center bg-amber-50/80 text-amber-900 font-bold font-mono">ต้นทุนต่อกระถาง (บาท)</th>
+              <th>ความคุ้มค่าเชิงพาณิชย์/สิ่งแวดล้อม</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyT13"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- บัญชีการใช้เงินทุนวิจัย -->
+    <section id="sec-budget" class="bg-white rounded-2xl p-5 sm:p-6 border border-rose-200 shadow-sm border-t-4 border-t-rose-500 table-card cat-budget">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 pb-4 mb-5">
+        <div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-sm">
+              <i class="fa-solid fa-receipt"></i>
+            </div>
+            <h3 class="font-bold font-prompt text-slate-800 text-lg">บัญชีการใช้เงินทุนวิจัยอย่างละเอียด (Research Budget & Expense Ledger)</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">ระบบออกรหัสรายการอัตโนมัติ วว/ดด/ปป-หมวด(A-Z)-เลขรัน(01-99) พร้อมระบบแนบสลิป/ใบเสร็จ</p>
+        </div>
+
+        <div class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+          <span class="text-xs font-prompt font-semibold text-slate-600">งบประมาณที่ได้รับ:</span>
+          <input type="number" id="budgetTotalInput" onchange="updateBudgetTotal(this.value)" class="w-28 text-right font-mono font-bold text-sm bg-white border border-slate-300 rounded px-2 py-1 text-rose-700 focus:outline-none focus:ring-1 focus:ring-rose-500" value="15000">
+          <span class="text-xs text-slate-500 font-prompt">บาท</span>
+        </div>
+      </div>
+
+      <!-- Budget Summary Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <span class="text-xs font-prompt text-slate-500 block mb-1">งบประมาณทั้งหมด</span>
+          <div id="statBudgetTotal" class="text-lg sm:text-xl font-bold font-mono text-slate-800">฿15,000.00</div>
+        </div>
+        <div class="bg-rose-50 p-4 rounded-xl border border-rose-200">
+          <span class="text-xs font-prompt text-rose-600 block mb-1 font-medium">ค่าใช้จ่ายสะสม</span>
+          <div id="statBudgetSpent" class="text-lg sm:text-xl font-bold font-mono text-rose-700">฿0.00</div>
+        </div>
+        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+          <span class="text-xs font-prompt text-emerald-600 block mb-1 font-medium">งบประมาณคงเหลือ</span>
+          <div id="statBudgetRemain" class="text-lg sm:text-xl font-bold font-mono text-emerald-700">฿15,000.00</div>
+        </div>
+        <div class="bg-amber-50 p-4 rounded-xl border border-amber-200">
+          <span class="text-xs font-prompt text-amber-600 block mb-1 font-medium">อัตราการเบิกจ่าย</span>
+          <div id="statBudgetPercent" class="text-lg sm:text-xl font-bold font-mono text-amber-700">0.0%</div>
+        </div>
+      </div>
+
+      <!-- Add Expense Form -->
+      <div class="editor-only-btn bg-slate-50 p-5 rounded-xl border border-slate-200 mb-6 no-print">
+        <h4 class="font-bold font-prompt text-slate-800 text-sm mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-file-circle-plus text-rose-600"></i> บันทึกรายการค่าใช้จ่ายใหม่
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 text-xs">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">วันที่ใช้จ่าย:</label>
+            <input type="date" id="newExpDate" onchange="autoGenerateExpenseCode()" class="w-full cell-input">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">หมวดหมู่ (A-E):</label>
+            <select id="newExpCategory" onchange="autoGenerateExpenseCode()" class="w-full cell-input font-prompt">
+              <option value="A">A: สารเคมี / วัสดุชีวภาพ</option>
+              <option value="B">B: วัสดุอุปกรณ์แล็บ / เกษตร</option>
+              <option value="C">C: ค่าเดินทาง / สำรวจพื้นที่</option>
+              <option value="D">D: เอกสาร / โปสเตอร์ / รายงาน</option>
+              <option value="E">E: ค่าใช้จ่ายอื่นๆ</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">รหัสรายการ (ออโต้):</label>
+            <input type="text" id="newExpCode" readonly class="w-full cell-input bg-slate-200/80 font-mono font-bold text-rose-700">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block font-semibold text-slate-600 mb-1">รายการค่าใช้จ่าย / ใช้อะไร:</label>
+            <input type="text" id="newExpItem" placeholder="เช่น เมล็ดถั่วเขียว, แป้งเปียกมันสำปะหลัง" class="w-full cell-input">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">จำนวนกี่ชิ้น:</label>
+            <input type="number" id="newExpQty" value="1" min="1" oninput="calcNewExpenseTotal()" class="w-full cell-input text-center">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">ราคา/ค่าใช้จ่ายต่อหน่วย (฿):</label>
+            <input type="number" id="newExpPrice" step="0.01" min="0" placeholder="0.00" oninput="calcNewExpenseTotal()" class="w-full cell-input text-right">
+          </div>
+          <div>
+            <label class="block font-semibold text-rose-700 mb-1">ราคารวมสุทธิ (฿):</label>
+            <input type="text" id="newExpTotal" readonly class="w-full cell-input font-mono font-bold text-rose-800 bg-rose-50 text-right" value="0.00">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">แนบรูปใบเสร็จ/สลิป:</label>
+            <input type="file" id="newExpReceiptFile" accept="image/*" class="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">หรือ ลิงก์ Drive/ไฟล์:</label>
+            <input type="url" id="newExpDriveUrl" placeholder="https://drive.google.com/..." class="w-full cell-input">
+          </div>
+        </div>
+        <div class="mt-4 text-right">
+          <button onclick="addNewExpense()" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-prompt text-xs font-semibold shadow-sm transition inline-flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> บันทึกรายการค่าใช้จ่าย
+          </button>
+        </div>
+      </div>
+
+      <!-- Expenses Table -->
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-32">รหัสรายการ</th>
+              <th class="w-28">วันที่</th>
+              <th class="w-20 text-center">หมวด</th>
+              <th>รายการค่าใช้จ่าย</th>
+              <th class="w-20 text-center">จำนวน</th>
+              <th class="w-28 text-right">ราคา/หน่วย</th>
+              <th class="w-32 text-right bg-rose-50/70 font-bold text-rose-900 font-mono">ยอดรวมสุทธิ</th>
+              <th class="w-32 text-center print:hidden">หลักฐานใบเสร็จ</th>
+              <th class="w-16 text-center editor-only-btn print:hidden">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyExpenses"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Login Modal -->
+  <div id="loginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 no-print">
+    <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 border border-slate-200 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="font-bold font-prompt text-slate-800 text-lg flex items-center gap-2">
+          <i class="fa-solid fa-lock text-jstp-600"></i> เข้าสู่ระบบเพื่อแก้ไข
+        </h3>
+        <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div id="loginErrorMsg" class="hidden text-xs text-red-600 bg-red-50 p-2 rounded-lg border border-red-200 font-prompt">
+        ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง!
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อผู้ใช้ (Username):</label>
+        <input type="text" id="loginUsername" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-jstp-500 focus:ring-1 focus:ring-jstp-500 font-prompt transition-colors text-slate-800" placeholder="กรอกชื่อผู้ใช้">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1">รหัสผ่าน (Password):</label>
+        <input type="password" id="loginPassword" onkeypress="if(event.key === 'Enter') submitLogin()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-jstp-500 focus:ring-1 focus:ring-jstp-500 font-prompt transition-colors text-slate-800" placeholder="กรอกรหัสผ่าน">
+      </div>
+      <div class="pt-3 border-t border-slate-100">
+        <button onclick="submitLogin()" class="w-full py-2 rounded-xl bg-jstp-600 hover:bg-jstp-700 text-white text-sm font-prompt font-semibold shadow-sm transition">
+          เข้าสู่ระบบ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Image Lightbox Modal -->
+  <div id="receiptLightboxModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4 no-print" onclick="closeReceiptLightbox()">
+    <div class="relative max-w-2xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl p-4" onclick="event.stopPropagation()">
+      <div class="flex justify-between items-center mb-3">
+        <h4 class="font-bold font-prompt text-slate-800 text-sm" id="lightboxTitle">หลักฐานการชำระเงิน / ใบเสร็จ</h4>
+        <button onclick="closeReceiptLightbox()" class="text-slate-400 hover:text-slate-600 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="max-h-[80vh] overflow-auto flex items-center justify-center bg-slate-100 rounded-xl p-2">
+        <img id="lightboxImage" src="" alt="ใบเสร็จ" class="max-w-full max-h-[70vh] rounded-lg object-contain shadow-sm">
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Confirmation Modal -->
+  <div id="customConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 no-print">
+    <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 border border-slate-200 space-y-4">
+      <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl mx-auto">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div class="text-center space-y-1">
+        <h4 class="font-bold font-prompt text-slate-800 text-base" id="confirmModalTitle">ยืนยันการดำเนินการ</h4>
+        <p class="text-xs text-slate-500 font-sarabun" id="confirmModalMessage">คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?</p>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="handleConfirmCancel()" class="w-1/2 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-prompt font-semibold">
+          ยกเลิก
+        </button>
+        <button onclick="handleConfirmAccept()" class="w-1/2 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-prompt font-semibold shadow-sm">
+          ยืนยัน
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Message Modal -->
+  <div id="customAlertModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 no-print">
+    <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 border border-slate-200 space-y-4 text-center">
+      <div id="alertModalIcon" class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl mx-auto">
+        <i class="fa-solid fa-circle-info"></i>
+      </div>
+      <div class="space-y-1">
+        <h4 class="font-bold font-prompt text-slate-800 text-base" id="alertModalTitle">ข้อความแจ้งเตือน</h4>
+        <p class="text-xs text-slate-500 font-sarabun" id="alertModalMessage">รายละเอียดข้อความ</p>
+      </div>
+      <button onclick="closeAlertModal()" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-prompt font-semibold shadow-sm">
+        ตกลง
+      </button>
+    </div>
+  </div>
+
+  <!-- Floating Toast Notification -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none no-print">
+    <div class="bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 text-xs font-prompt border border-slate-700">
+      <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+      <span id="toastMessage">บันทึกข้อมูลเรียบร้อยแล้ว</span>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_JSTP_DATA = {
+      meta: {
+        title: "การศึกษาและพัฒนาประสิทธิภาพกระถางเพาะชำย่อยสลายได้ทางชีวภาพจากวัสดุธรรมชาติ",
+        authors: "นักเรียนผู้จัดทำโครงงาน JSTP",
+        advisor: "อาจารย์ที่ปรึกษาโครงงานวิทยาศาสตร์",
+        school: "โครงการพัฒนาอัจฉริยภาพทางวิทยาศาสตร์และเทคโนโลยีสำหรับเด็กและเยาวชน (JSTP)"
+      },
+      budgetTotal: 15000,
+      t1: [
+        { id: "t1_1", formula: "ชุดควบคุม (ถุงพลาสติก)", color: "ดำทึบ", thickness: 0.05, weight: 8.5, surface: "ผิวเรียบ มันวาว", strength: "เหนียว ทนแรงดึง" },
+        { id: "t1_2", formula: "สูตรที่ 1: ใบตองตึง 100%", color: "น้ำตาลอ่อน", thickness: 0.35, weight: 42.0, surface: "หยาบปานกลาง มีเส้นใย", strength: "แข็ง ปานกลาง" },
+        { id: "t1_3", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", color: "น้ำตาลเข้ม", thickness: 0.40, weight: 48.5, surface: "แน่น ผิวเนียน ละเอียด", strength: "แข็งแรงดีมาก ไม่ยุ่ย" },
+        { id: "t1_4", formula: "สูตรที่ 3: ใบตองตึง + ขุยมะพร้าว", color: "น้ำตาลอมส้ม", thickness: 0.45, weight: 38.0, surface: "ฟู มีรูพรุนโปร่ง", strength: "เหนียว ยืดหยุ่นดี" }
+      ],
+      t2: [
+        { id: "t2_1", formula: "ชุดควบคุม (ถุงพลาสติก)", initWeight: 200, h1: 198, h3: 195, h6: 190 },
+        { id: "t2_2", formula: "สูตรที่ 1: ใบตองตึง 100%", initWeight: 200, h1: 145, h3: 110, h6: 78 },
+        { id: "t2_3", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", initWeight: 200, h1: 175, h3: 152, h6: 125 },
+        { id: "t2_4", formula: "สูตรที่ 3: ใบตองตึง + ขุยมะพร้าว", initWeight: 200, h1: 160, h3: 135, h6: 102 }
+      ],
+      t3: [
+        { id: "t3_1", formula: "ชุดควบคุม (ถุงพลาสติก)", p1: 99.0, p3: 97.5, p6: 95.0, avg: 97.17 },
+        { id: "t3_2", formula: "สูตรที่ 1: ใบตองตึง 100%", p1: 72.5, p3: 55.0, p6: 39.0, avg: 55.50 },
+        { id: "t3_3", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", p1: 87.5, p3: 76.0, p6: 62.5, avg: 75.33 },
+        { id: "t3_4", formula: "สูตรที่ 3: ใบตองตึง + ขุยมะพร้าว", p1: 80.0, p3: 67.5, p6: 51.0, avg: 66.17 }
+      ],
+      t4: [
+        { id: "t4_1", formula: "ชุดควบคุม (ถุงพลาสติก)", w500: "ไม่เปลี่ยนแปลง", w1000: "ไม่เปลี่ยนแปลง", w1500: "ยืดตัวเล็กน้อย", crack: "ไม่มีรอยแตก", deformation: "ไม่มี", collapse: "ไม่ยุบตัว" },
+        { id: "t4_2", formula: "สูตรที่ 1: ใบตองตึง 100%", w500: "รับได้ปกติ", w1000: "มีรอยร้าวเล็กน้อย", w1500: "แตกหัก", crack: "รอยร้าวที่ขอบ", deformation: "บิดเบี้ยว", collapse: "ยุบตัวบางส่วน" },
+        { id: "t4_3", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", w500: "รับได้มั่นคง", w1000: "รับได้มั่นคง", w1500: "รับได้ดี ไม่แตก", crack: "ไม่มีรอยแตก", deformation: "น้อยมาก", collapse: "ไม่ยุบตัว" },
+        { id: "t4_4", formula: "สูตรที่ 3: ใบตองตึง + ขุยมะพร้าว", w500: "รับได้ดี", w1000: "ยุบตัวเล็กน้อย", w1500: "แตกร้าว", crack: "รอยร้าวรอบก้น", deformation: "ยุบตัว", collapse: "ยุบตัวเล็กน้อย" }
+      ],
+      t5: [
+        { id: "t5_1", formula: "ชุดควบคุม (ถุงพลาสติก)", moves: 30, cracks: "ไม่มี", deformation: "ไม่มี", overallStatus: "สมบูรณ์ปกติ 100%" },
+        { id: "t5_2", formula: "สูตรที่ 1: ใบตองตึง 100%", moves: 12, cracks: "ขอบแตก", deformation: "เสียรูปทรง", overallStatus: "ชำรุดปานกลาง" },
+        { id: "t5_3", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", moves: 25, cracks: "ไม่มี", deformation: "คงรูปเดิม", overallStatus: "สมบูรณ์ดีมาก" },
+        { id: "t5_4", formula: "สูตรที่ 3: ใบตองตึง + ขุยมะพร้าว", moves: 18, cracks: "มีขุยหลุด", deformation: "ยืดหยุ่นเล็กน้อย", overallStatus: "พอใช้" }
+      ],
+      t6: [
+        { id: "t6_1", formula: "ชุดควบคุม (ถุงพลาสติก)", planted: 20, germinated: 18, rate: 90.0 },
+        { id: "t6_2", formula: "สูตรที่ 1: ใบตองตึง 100%", planted: 20, germinated: 17, rate: 85.0 },
+        { id: "t6_3", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", planted: 20, germinated: 19, rate: 95.0 },
+        { id: "t6_4", formula: "สูตรที่ 3: ใบตองตึง + ขุยมะพร้าว", planted: 20, germinated: 18, rate: 90.0 }
+      ],
+      t7: [
+        {
+          id: "t7_1",
+          round: 1,
+          date: "2026-09-14",
+          f1: { height: 3.5, leaves: 2, color: "เขียวอ่อน", health: "แข็งแรง", moisture: 70 },
+          f2: { height: 3.8, leaves: 2, color: "เขียวสด", health: "สมบูรณ์ดีมาก", moisture: 72 },
+          f3: { height: 3.2, leaves: 2, color: "เขียวอ่อน", health: "ปกติ", moisture: 68 },
+          fc: { height: 3.0, leaves: 2, color: "เขียว", health: "ปกติ (น้ำขัง)", moisture: 85 }
+        },
+        {
+          id: "t7_2",
+          round: 2,
+          date: "2026-09-17",
+          f1: { height: 7.2, leaves: 3, color: "เขียว", health: "เจริญดี", moisture: 65 },
+          f2: { height: 8.5, leaves: 4, color: "เขียวเข้มสด", health: "สมบูรณ์มาก", moisture: 70 },
+          f3: { height: 7.8, leaves: 3, color: "เขียว", health: "เจริญดี", moisture: 62 },
+          fc: { height: 6.5, leaves: 3, color: "เขียวซีด", health: "ปานกลาง", moisture: 82 }
+        }
+      ],
+      t8: [
+        { id: "t8_1", formula: "ชุดควบคุม (ถุงพลาสติก)", avgHeight: 14.1, avgLeaves: 5.2, overallGrowth: "เติบโตปานกลาง ระบายน้ำช้า" },
+        { id: "t8_2", formula: "สูตรที่ 1: ใบตองตึง 100%", avgHeight: 13.8, avgLeaves: 4.8, overallGrowth: "ปานกลาง ดินแห้งเร็ว" },
+        { id: "t8_3", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", avgHeight: 16.5, avgLeaves: 6.4, overallGrowth: "ดีมาก รากแทงผ่านได้ดี ความชื้นสม่ำเสมอ" },
+        { id: "t8_4", formula: "สูตรที่ 3: ใบตองตึง + ขุยมะพร้าว", avgHeight: 15.2, avgLeaves: 5.8, overallGrowth: "ดี รากชอนไชง่าย" }
+      ],
+      t9: [
+        { id: "t9_1", week: "สัปดาห์ที่ 1", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", colorChange: "เริ่มคล้ำลงเล็กน้อย", breakdown: "ยังไม่แตก", softening: "ผิวด้านนอกนิ่มลง", mold: "พบเส้นใยราสีขาวบางๆ", notes: "ราเป็นมิตรในดินช่วยย่อย" },
+        { id: "t9_2", week: "สัปดาห์ที่ 2", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", colorChange: "สีน้ำตาลเข้มเกือบดำ", breakdown: "รอยปริแตกที่ก้น", softening: "เปื่อยยุ่ยชัดเจน", mold: "พบสปอร์ราเจริญดี", notes: "รากพืชเริ่มแทงผ่านได้" },
+        { id: "t9_3", week: "สัปดาห์ที่ 4", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", colorChange: "สีดำปนดิน", breakdown: "แตกเป็นชิ้นเล็กๆ", softening: "ยุ่ยกลืนกับดิน", mold: "เส้นใยรากระจายรอบ", notes: "ย่อยสลายไปกว่า 80%" }
+      ],
+      t10: [
+        { id: "t10_1", formula: "ชุดควบคุม (ถุงพลาสติก)", startDegrade: "ไม่ย่อยสลาย (>365)", startBreak: "ไม่แตกสลาย", fullDegrade: "> 100 ปี" },
+        { id: "t10_2", formula: "สูตรที่ 1: ใบตองตึง 100%", startDegrade: "7 วัน", startBreak: "15 วัน", fullDegrade: "35 วัน" },
+        { id: "t10_3", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", startDegrade: "10 วัน", startBreak: "21 วัน", fullDegrade: "45 วัน" },
+        { id: "t10_4", formula: "สูตรที่ 3: ใบตองตึง + ขุยมะพร้าว", startDegrade: "8 วัน", startBreak: "18 วัน", fullDegrade: "40 วัน" }
+      ],
+      t11: [
+        { id: "t11_1", topic: "ความสามารถในการอุ้มน้ำ", f1: "ปานกลาง", f2: "ดีมาก สม่ำเสมอ", f3: "ดี ระบายเร็ว", control: "กักน้ำมากไป (ขัง)", conclusion: "สูตรที่ 2 รักษาสมดุลความชื้นได้เหมาะสมที่สุด" },
+        { id: "t11_2", topic: "ความแข็งแรงในการใช้งาน", f1: "เปราะแตกง่ายเมื่อเปียก", f2: "แข็งแรงดี ทนการเคลื่อนย้าย", f3: "ยืดหยุ่น ยุบตัวง่าย", control: "เหนียว ทนทานสูง", conclusion: "สูตรที่ 2 ใกล้เคียงกับพลาสติกและเพียงพอต่อการเพาะกล้า" },
+        { id: "t11_3", topic: "การเจริญเติบโตของกล้าไม้", f1: "เจริญเติบโตปานกลาง", f2: "เจริญเติบโตสูงสุด รากแทงทะลุ", f3: "เจริญเติบโตดี", control: "รากขดก้นถุง", conclusion: "กระถางชีวภาพช่วยให้ระบบรากเจริญดี ไม่ต้องแกะถุงออก" },
+        { id: "t11_4", topic: "การย่อยสลายทางชีวภาพ", f1: "ย่อยเร็วมาก (35 วัน)", f2: "ย่อยเหมาะสม (45 วัน)", f3: "ย่อยเร็ว (40 วัน)", control: "ไม่ย่อยสลาย", conclusion: "สูตรที่ 2 คงสภาพได้พอดีจนกล้าไม้พร้อมปลูกลงดิน" }
+      ],
+      t12: [
+        { id: "t12_1", formula: "ชุดควบคุม (ถุงพลาสติก)", waterScore: "2.0 (ขังน้ำ)", strengthScore: "5.0 (สูงมาก)", growthScore: "3.5 (ปานกลาง)", degradeScore: "1.0 (ไม่ย่อย)", overallRank: "ระดับพอใช้ (ก่อมลพิษ)" },
+        { id: "t12_2", formula: "สูตรที่ 1: ใบตองตึง 100%", waterScore: "3.0", strengthScore: "2.8", growthScore: "3.6", degradeScore: "4.5", overallRank: "ระดับปานกลาง" },
+        { id: "t12_3", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", waterScore: "4.8", strengthScore: "4.6", growthScore: "4.9", degradeScore: "4.8", overallRank: "ระดับดีเยี่ยม (เหมาะสมที่สุด)" },
+        { id: "t12_4", formula: "สูตรที่ 3: ใบตองตึง + ขุยมะพร้าว", waterScore: "4.0", strengthScore: "3.5", growthScore: "4.2", degradeScore: "4.4", overallRank: "ระดับดี" }
+      ],
+      t13: [
+        { id: "t13_1", formula: "สูตรที่ 1: ใบตองตึง 100%", materialCost: 45.0, yieldPots: 30, costPerPot: 1.50, feasibility: "ต้นทุนต่ำมาก วัตถุดิบหาได้ในท้องถิ่น" },
+        { id: "t13_2", formula: "สูตรที่ 2: ใบตองตึง + แป้งเปียก", materialCost: 75.0, yieldPots: 40, costPerPot: 1.88, feasibility: "คุ้มค่าสูงสุด แข็งแรงและลดการใช้พลาสติกได้จริง" },
+        { id: "t13_3", formula: "สูตรที่ 3: ใบตองตึง + ขุยมะพร้าว", materialCost: 85.0, yieldPots: 35, costPerPot: 2.43, feasibility: "คุ้มค่าปานกลาง น้ำหนักเบา" }
+      ],
+      expenses: [
+        { id: "exp_1", code: "10/09/26-A-01", date: "2026-09-10", category: "A", item: "แป้งมันสำปะหลังประสานเนื้อกระถาง 5 กก.", qty: 5, price: 35.0, total: 175.0, receipt: "", driveUrl: "https://drive.google.com" },
+        { id: "exp_2", code: "12/09/26-B-01", date: "2026-09-12", category: "B", item: "แม่พิมพ์อัดขึ้นรูปกระถางสแตนเลส", qty: 2, price: 450.0, total: 900.0, receipt: "", driveUrl: "" },
+        { id: "exp_3", code: "15/09/26-A-02", date: "2026-09-15", category: "A", item: "เมล็ดพันธุ์ถั่วเขียวตราเกษตร (3 ซอง)", qty: 3, price: 25.0, total: 75.0, receipt: "", driveUrl: "" }
+      ]
+    };
+
+    let appData = {};
+    let isEditorRole = localStorage.getItem('jstp_logged_in') === 'true'; 
+    let currentViewMode = 'all'; 
+    let pendingConfirmAction = null;
+    let chartWaterInstance = null;
+
+    // Booting the application
+    window.addEventListener('DOMContentLoaded', () => {
+      loadDataFromStorage();
+      setupDateInputs();
+      updateRoleUI();
+      renderAllTables();
+      renderBudgetSection();
+      renderWaterChart();
+      autoGenerateExpenseCode();
+      autoGenerateT7Round();
+    });
+
+    function loadDataFromStorage() {
+      const saved = localStorage.getItem('jstp_research_v4_data');
+      if (saved) {
+        try {
+          appData = JSON.parse(saved);
+        } catch (e) {
+          appData = JSON.parse(JSON.stringify(DEFAULT_JSTP_DATA));
+        }
+      } else {
+        appData = JSON.parse(JSON.stringify(DEFAULT_JSTP_DATA));
+      }
+
+      const requiredTables = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 'expenses'];
+      requiredTables.forEach(tbl => {
+        if (!appData[tbl]) appData[tbl] = DEFAULT_JSTP_DATA[tbl] ? JSON.parse(JSON.stringify(DEFAULT_JSTP_DATA[tbl])) : [];
+      });
+      if (!appData.meta) appData.meta = JSON.parse(JSON.stringify(DEFAULT_JSTP_DATA.meta));
+      if (!appData.budgetTotal) appData.budgetTotal = 15000;
+
+      if (appData.t7 && appData.t7.length > 0 && typeof appData.t7[0].f1 === 'string') {
+        appData.t7 = JSON.parse(JSON.stringify(DEFAULT_JSTP_DATA.t7));
+      } else if (appData.t7 && appData.t7.length > 0 && appData.t7[0].formula !== undefined) {
+        appData.t7 = JSON.parse(JSON.stringify(DEFAULT_JSTP_DATA.t7));
+      }
+    }
+
+    function saveToStorage(notify = false) {
+      localStorage.setItem('jstp_research_v4_data', JSON.stringify(appData));
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('th-TH');
+      document.getElementById('saveTimestamp').innerText = `บันทึกอัตโนมัติเมื่อ ${timeStr}`;
+      
+      if (notify) {
+        showToast(`บันทึกข้อมูลทั้งหมดเรียบร้อยแล้ว (${timeStr})`, 'success');
+      }
+    }
+
+    function manualSaveAll() {
+      saveToStorage(true);
+    }
+
+    function setupDateInputs() {
+      const today = new Date().toISOString().split('T')[0];
+      const newExpDateEl = document.getElementById('newExpDate');
+      if (newExpDateEl && !newExpDateEl.value) {
+        newExpDateEl.value = today;
+      }
+      const newT7DateEl = document.getElementById('newT7Date');
+      if (newT7DateEl && !newT7DateEl.value) {
+        newT7DateEl.value = today;
+      }
+    }
+
+    function showLoginModal() {
+      document.getElementById('loginUsername').value = '';
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('loginErrorMsg').classList.add('hidden');
+      document.getElementById('loginModal').classList.remove('hidden');
+      document.getElementById('loginModal').classList.add('flex');
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').classList.add('hidden');
+      document.getElementById('loginModal').classList.remove('flex');
+    }
+
+    function submitLogin() {
+      const u = document.getElementById('loginUsername').value.trim();
+      const p = document.getElementById('loginPassword').value.trim();
+      if (u === 'Thinnapat' && p === 'tk@26') {
+        isEditorRole = true;
+        localStorage.setItem('jstp_logged_in', 'true');
+        closeLoginModal();
+        updateRoleUI();
+        showToast("เข้าสู่ระบบสำเร็จ! ปลดล็อกโหมดแก้ไข", "success");
+      } else {
+        document.getElementById('loginErrorMsg').classList.remove('hidden');
+      }
+    }
+
+    function logout() {
+      isEditorRole = false;
+      localStorage.setItem('jstp_logged_in', 'false');
+      updateRoleUI();
+      showToast("ออกจากระบบแล้ว กลับสู่โหมดดูอย่างเดียว", "info");
+    }
+
+    // Strong viewer lock: also covers fields created dynamically after the initial render.
+    function enforceViewerLock() {
+      if (isEditorRole) return;
+      document.querySelectorAll('.cell-input, .mini-sub-input, .meta-input').forEach(el => {
+        if (el.tagName === 'SELECT') {
+          el.disabled = true;
+        } else {
+          el.readOnly = true;
+          el.setAttribute('readonly', 'readonly');
+        }
+      });
+    }
+
+    function updateRoleUI() {
+      const body = document.body;
+      const badgeContainer = document.getElementById('roleBadgeContainer');
+      const statusText = document.getElementById('statusText');
+
+      const fields = document.querySelectorAll('.cell-input, .mini-sub-input, .meta-input');
+      if (isEditorRole) {
+        fields.forEach(el => {
+          if (el.tagName === 'SELECT') el.disabled = false;
+          else el.readOnly = false;
+        });
+        body.classList.remove('role-viewer');
+        body.classList.add('role-editor');
+        badgeContainer.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-800 font-prompt text-[11px] font-bold shadow-sm">
+              <i class="fa-solid fa-user-check"></i> Thinnapat
+            </span>
+            <button onclick="logout()" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 font-prompt text-xs font-semibold shadow-sm transition">
+              ออกจากระบบ
+            </button>
+          </div>
+        `;
+        statusText.innerHTML = `<i class="fa-solid fa-pen-to-square text-emerald-600 mr-1"></i> โหมดแก้ไข (Editor): คุณสามารถเพิ่ม ลบ และพิมพ์แก้ไขทุกตารางได้โดยตรง ข้อมูลจะถูกเซฟอัตโนมัติ`;
+      } else {
+        fields.forEach(el => {
+          if (el.tagName === 'SELECT') el.disabled = true;
+          else el.readOnly = true;
+        });
+        body.classList.remove('role-editor');
+        body.classList.add('role-viewer');
+        badgeContainer.innerHTML = `
+          <button onclick="showLoginModal()" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-lock"></i> <span>เข้าสู่ระบบแก้ไข</span>
+          </button>
+        `;
+        statusText.innerHTML = `<i class="fa-solid fa-eye text-amber-600 mr-1"></i> โหมดผู้เข้าชม (Read-Only): ข้อมูลถูกล็อกให้อ่านได้อย่างเดียว กรุณาเข้าสู่ระบบเพื่อแก้ไขข้อมูล`;
+        enforceViewerLock();
+      }
+    }
+
+    // Prevent edits even if a table row/field is rendered dynamically after updateRoleUI().
+    document.addEventListener('beforeinput', function(e) {
+      if (!isEditorRole && e.target.closest('.cell-input, .mini-sub-input, .meta-input')) {
+        e.preventDefault();
+      }
+    }, true);
+    document.addEventListener('input', function(e) {
+      if (!isEditorRole && e.target.closest('.cell-input, .mini-sub-input, .meta-input')) {
+        e.preventDefault();
+        enforceViewerLock();
+      }
+    }, true);
+    document.addEventListener('change', function(e) {
+      if (!isEditorRole && e.target.closest('.cell-input, .mini-sub-input, .meta-input')) {
+        enforceViewerLock();
+      }
+    }, true);
+
+    const viewerLockObserver = new MutationObserver(() => {
+      if (!isEditorRole) enforceViewerLock();
+    });
+    viewerLockObserver.observe(document.body, { childList: true, subtree: true });
+
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      const btnAll = document.getElementById('btnViewAll');
+      const btnCat = document.getElementById('btnViewCategory');
+      const allCards = document.querySelectorAll('.table-card:not(#sec-meta)');
+
+      if (mode === 'all') {
+        btnAll.className = 'px-3 py-1.5 rounded-lg bg-jstp-700 text-white font-semibold flex items-center gap-1.5 shadow-sm';
+        btnCat.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-200 font-semibold flex items-center gap-1.5';
+        allCards.forEach(b => b.classList.remove('hidden'));
+        
+        document.querySelectorAll('.cat-btn').forEach(btn => {
+          btn.classList.remove('bg-slate-800', 'text-white');
+          btn.classList.add('text-slate-600');
+        });
+      } else {
+        btnCat.className = 'px-3 py-1.5 rounded-lg bg-jstp-700 text-white font-semibold flex items-center gap-1.5 shadow-sm';
+        btnAll.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-200 font-semibold flex items-center gap-1.5';
+        switchCategory('cat-physical');
+      }
+    }
+
+    function switchCategory(catId) {
+      if (currentViewMode !== 'category') {
+        currentViewMode = 'category';
+        document.getElementById('btnViewCategory').className = 'px-3 py-1.5 rounded-lg bg-jstp-700 text-white font-semibold flex items-center gap-1.5 shadow-sm';
+        document.getElementById('btnViewAll').className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-200 font-semibold flex items-center gap-1.5';
+      }
+
+      document.querySelectorAll('.table-card:not(#sec-meta)').forEach(b => b.classList.add('hidden'));
+      document.querySelectorAll('.' + catId).forEach(b => b.classList.remove('hidden'));
+
+      document.querySelectorAll('.cat-btn').forEach(btn => {
+        btn.classList.remove('bg-slate-800', 'text-white');
+        btn.classList.add('text-slate-600');
+      });
+      if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('bg-slate-800', 'text-white');
+        window.event.currentTarget.classList.remove('text-slate-600');
+      }
+
+      if (catId === 'cat-water') {
+        setTimeout(renderWaterChart, 100);
+      }
+    }
+
+    function jumpToTable(secId) {
+      if (!secId) return;
+      if (currentViewMode === 'category') {
+        setViewMode('all');
+      }
+      const target = document.getElementById(secId);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        target.classList.add('ring-2', 'ring-jstp-500');
+        setTimeout(() => target.classList.remove('ring-2', 'ring-jstp-500'), 1500);
+      }
+      document.getElementById('quickJumpSelect').value = '';
+    }
+
+    function updateCellData(tableName, rowId, field, value, isNumeric = false) {
+      const list = appData[tableName];
+      if (!list) return;
+      const row = list.find(r => r.id === rowId);
+      if (row) {
+        row[field] = isNumeric ? (value === '' ? 0 : Number(value)) : value;
+
+        if (tableName === 't3') {
+          const p1 = Number(row.p1) || 0;
+          const p3 = Number(row.p3) || 0;
+          const p6 = Number(row.p6) || 0;
+          row.avg = Number(((p1 + p3 + p6) / 3).toFixed(2));
+          const avgCell = document.getElementById(`t3_avg_${rowId}`);
+          if (avgCell) avgCell.innerText = `${row.avg}%`;
+          renderWaterChart();
+        } else if (tableName === 't6') {
+          const planted = Number(row.planted) || 1;
+          const germ = Number(row.germinated) || 0;
+          row.rate = Number(((germ / planted) * 100).toFixed(1));
+          const rateCell = document.getElementById(`t6_rate_${rowId}`);
+          if (rateCell) rateCell.innerText = `${row.rate}%`;
+        } else if (tableName === 't13') {
+          const cost = Number(row.materialCost) || 0;
+          const yieldCount = Number(row.yieldPots) || 1;
+          row.costPerPot = Number((cost / yieldCount).toFixed(2));
+          const costCell = document.getElementById(`t13_cost_${rowId}`);
+          if (costCell) costCell.innerText = `฿${row.costPerPot.toFixed(2)}`;
+        }
+
+        saveToStorage();
+      }
+    }
+
+    function updateT7Field(rowId, formulaKey, fieldName, value, isNumeric = false) {
+      const row = appData.t7.find(r => r.id === rowId);
+      if (row) {
+        if (!row[formulaKey]) row[formulaKey] = {};
+        row[formulaKey][fieldName] = isNumeric ? (value === '' ? '' : Number(value)) : value;
+        saveToStorage();
+      }
+    }
+
+    function confirmDeleteRow(tableName, rowId) {
+      showConfirmModal("คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลชุดนี้?", () => {
+        deleteRowImmediate(tableName, rowId);
+      });
+    }
+
+    function deleteRowImmediate(tableName, rowId) {
+      if (appData[tableName]) {
+        appData[tableName] = appData[tableName].filter(r => r.id !== rowId);
+        saveToStorage();
+        renderTableByName(tableName);
+        if (tableName === 't3') renderWaterChart();
+        if (tableName === 't7') autoGenerateT7Round();
+        showToast("ลบข้อมูลเรียบร้อยแล้ว", "success");
+      }
+    }
+
+    // Reliable print action: convert form controls to full, wrapping text for print.
+    function printReport() {
+      const pairs = [
+        ['metaTitle', 'metaTitlePrint'],
+        ['metaAuthors', 'metaAuthorsPrint'],
+        ['metaAdvisor', 'metaAdvisorPrint'],
+        ['metaSchool', 'metaSchoolPrint']
+      ];
+      pairs.forEach(([src, dst]) => {
+        const a = document.getElementById(src);
+        const b = document.getElementById(dst);
+        if (a && b) b.textContent = a.value || '';
+      });
+
+      // Inputs are single-line HTML controls and can clip long values when printed.
+      // Temporarily replace them with normal wrapping blocks containing their full value.
+      const replacements = [];
+      document.querySelectorAll('input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select').forEach(el => {
+        if (el.type === 'hidden' || el.closest('.no-print') || el.closest('.editor-only-btn')) return;
+        let value = '';
+        if (el.tagName === 'SELECT') {
+          value = el.options[el.selectedIndex]?.text || '';
+        } else if (el.type === 'file') {
+          value = el.files?.[0]?.name || '';
+        } else {
+          value = el.value ?? '';
+        }
+        const block = document.createElement('div');
+        block.className = 'print-full-value';
+        block.textContent = value;
+        block.setAttribute('data-print-original-display', el.style.display || '');
+        el.style.display = 'none';
+        el.parentNode.insertBefore(block, el);
+        replacements.push({ el, block });
+      });
+
+      const restore = () => {
+        replacements.forEach(({el, block}) => {
+          el.style.display = block.getAttribute('data-print-original-display') || '';
+          block.remove();
+        });
+        window.removeEventListener('afterprint', restore);
+      };
+      window.addEventListener('afterprint', restore);
+
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          try { window.focus(); window.print(); }
+          catch (err) { restore(); alert('ไม่สามารถเปิดหน้าต่างพิมพ์ได้ กรุณาลองกดปุ่มอีกครั้ง'); }
+        }, 150);
+      });
+    }
+
+
+    function updateMeta(field, val) {
+      if (!appData.meta) appData.meta = {};
+      appData.meta[field] = val;
+      
+      if (field === 'title') document.getElementById('metaTitlePrint').innerText = val;
+      if (field === 'authors') document.getElementById('metaAuthorsPrint').innerText = val;
+      if (field === 'advisor') document.getElementById('metaAdvisorPrint').innerText = val;
+      if (field === 'school') document.getElementById('metaSchoolPrint').innerText = val;
+
+      saveToStorage();
+    }
+
+    function formatThaiDate(isoDate) {
+      if (!isoDate) return '--/--/----';
+      const parts = isoDate.split('-');
+      if (parts.length !== 3) return isoDate;
+      const year = parseInt(parts[0]) + 543;
+      return `${parts[2]}/${parts[1]}/${year}`;
+    }
+
+    function renderAllTables() {
+      document.getElementById('metaTitle').value = appData.meta.title || '';
+      document.getElementById('metaTitlePrint').innerText = appData.meta.title || '';
+      
+      document.getElementById('metaAuthors').value = appData.meta.authors || '';
+      document.getElementById('metaAuthorsPrint').innerText = appData.meta.authors || '';
+      
+      document.getElementById('metaAdvisor').value = appData.meta.advisor || '';
+      document.getElementById('metaAdvisorPrint').innerText = appData.meta.advisor || '';
+      
+      document.getElementById('metaSchool').value = appData.meta.school || '';
+      document.getElementById('metaSchoolPrint').innerText = appData.meta.school || '';
+
+      renderTableT1();
+      renderTableT2();
+      renderTableT3();
+      renderTableT4();
+      renderTableT5();
+      renderTableT6();
+      renderTableT7();
+      renderTableT8();
+      renderTableT9();
+      renderTableT10();
+      renderTableT11();
+      renderTableT12();
+      renderTableT13();
+    }
+
+    function renderTableByName(name) {
+      const renderers = {
+        t1: renderTableT1,
+        t2: renderTableT2,
+        t3: renderTableT3,
+        t4: renderTableT4,
+        t5: renderTableT5,
+        t6: renderTableT6,
+        t7: renderTableT7,
+        t8: renderTableT8,
+        t9: renderTableT9,
+        t10: renderTableT10,
+        t11: renderTableT11,
+        t12: renderTableT12,
+        t13: renderTableT13
+      };
+      if (renderers[name]) renderers[name]();
+    }
+
+    const makeInput = (tbl, id, field, val, type = 'text', cls = '') => {
+      const numStep = type === 'number' ? 'step="any"' : '';
+      return `<input type="${type}" ${numStep} value="${val ?? ''}" oninput="updateCellData('${tbl}', '${id}', '${field}', this.value, ${type === 'number'})" class="cell-input ${cls}">`;
+    };
+
+    const makeDeleteBtn = (tbl, id) => `
+      <td class="text-center editor-only-btn print:hidden">
+        <button onclick="confirmDeleteRow('${tbl}', '${id}')" class="text-slate-400 hover:text-red-600 p-1 transition" title="ลบแถวนี้">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </td>
+    `;
+
+    // Table 1
+    function renderTableT1() {
+      const tbody = document.getElementById('tbodyT1');
+      tbody.innerHTML = appData.t1.map(r => `
+        <tr>
+          <td>${makeInput('t1', r.id, 'formula', r.formula, 'text', 'font-semibold text-slate-800')}</td>
+          <td>${makeInput('t1', r.id, 'color', r.color)}</td>
+          <td>${makeInput('t1', r.id, 'thickness', r.thickness, 'number', 'text-center')}</td>
+          <td>${makeInput('t1', r.id, 'weight', r.weight, 'number', 'text-center')}</td>
+          <td>${makeInput('t1', r.id, 'surface', r.surface)}</td>
+          <td>${makeInput('t1', r.id, 'strength', r.strength)}</td>
+          ${makeDeleteBtn('t1', r.id)}
+        </tr>
+      `).join('');
+    }
+    function addRowT1() {
+      const newId = 't1_' + Date.now();
+      appData.t1.push({ id: newId, formula: `สูตรที่ ${appData.t1.length + 1}`, color: "น้ำตาล", thickness: 0.3, weight: 40.0, surface: "ผิวเรียบ", strength: "ปานกลาง" });
+      saveToStorage();
+      renderTableT1();
+      showToast("เพิ่มแถวในตารางที่ 1 เรียบร้อย", "success");
+    }
+
+    // Table 2
+    function renderTableT2() {
+      const tbody = document.getElementById('tbodyT2');
+      tbody.innerHTML = appData.t2.map(r => `
+        <tr>
+          <td>${makeInput('t2', r.id, 'formula', r.formula, 'text', 'font-semibold text-slate-800')}</td>
+          <td>${makeInput('t2', r.id, 'initWeight', r.initWeight, 'number', 'text-center font-bold')}</td>
+          <td>${makeInput('t2', r.id, 'h1', r.h1, 'number', 'text-center')}</td>
+          <td>${makeInput('t2', r.id, 'h3', r.h3, 'number', 'text-center')}</td>
+          <td>${makeInput('t2', r.id, 'h6', r.h6, 'number', 'text-center')}</td>
+          ${makeDeleteBtn('t2', r.id)}
+        </tr>
+      `).join('');
+    }
+    function addRowT2() {
+      const newId = 't2_' + Date.now();
+      appData.t2.push({ id: newId, formula: `สูตรที่ ${appData.t2.length + 1}`, initWeight: 200, h1: 150, h3: 120, h6: 90 });
+      saveToStorage();
+      renderTableT2();
+      showToast("เพิ่มแถวในตารางที่ 2 เรียบร้อย", "success");
+    }
+
+    // Table 3
+    function renderTableT3() {
+      const tbody = document.getElementById('tbodyT3');
+      tbody.innerHTML = appData.t3.map(r => {
+        const avg = r.avg ?? ((Number(r.p1 || 0) + Number(r.p3 || 0) + Number(r.p6 || 0)) / 3).toFixed(2);
+        return `
+          <tr>
+            <td>${makeInput('t3', r.id, 'formula', r.formula, 'text', 'font-semibold text-slate-800')}</td>
+            <td>${makeInput('t3', r.id, 'p1', r.p1, 'number', 'text-center')}</td>
+            <td>${makeInput('t3', r.id, 'p3', r.p3, 'number', 'text-center')}</td>
+            <td>${makeInput('t3', r.id, 'p6', r.p6, 'number', 'text-center')}</td>
+            <td id="t3_avg_${r.id}" class="text-center font-bold font-mono text-blue-700 bg-blue-50/50">${avg}%</td>
+            ${makeDeleteBtn('t3', r.id)}
+          </tr>
+        `;
+      }).join('');
+    }
+    function addRowT3() {
+      const newId = 't3_' + Date.now();
+      appData.t3.push({ id: newId, formula: `สูตรที่ ${appData.t3.length + 1}`, p1: 75.0, p3: 60.0, p6: 45.0, avg: 60.0 });
+      saveToStorage();
+      renderTableT3();
+      renderWaterChart();
+      showToast("เพิ่มแถวในตารางที่ 3 เรียบร้อย", "success");
+    }
+
+    function calculateTable3FromTable2() {
+      if (!appData.t2 || appData.t2.length === 0) {
+        showAlertModal("ไม่พบข้อมูล", "กรุณากรอกข้อมูลในตารางที่ 2 ก่อนทำการคำนวณ");
+        return;
+      }
+      appData.t3 = appData.t2.map((r, i) => {
+        const init = Number(r.initWeight) || 1;
+        const p1 = Number(((Number(r.h1) / init) * 100).toFixed(1));
+        const p3 = Number(((Number(r.h3) / init) * 100).toFixed(1));
+        const p6 = Number(((Number(r.h6) / init) * 100).toFixed(1));
+        const avg = Number(((p1 + p3 + p6) / 3).toFixed(2));
+        return {
+          id: appData.t3[i]?.id || 't3_' + (Date.now() + i),
+          formula: r.formula,
+          p1, p3, p6, avg
+        };
+      });
+      saveToStorage();
+      renderTableT3();
+      renderWaterChart();
+      showToast("คำนวณ % การอุ้มน้ำจากตารางที่ 2 เรียบร้อยแล้ว", "success");
+    }
+
+    // Table 4
+    function renderTableT4() {
+      const tbody = document.getElementById('tbodyT4');
+      tbody.innerHTML = appData.t4.map(r => `
+        <tr>
+          <td>${makeInput('t4', r.id, 'formula', r.formula, 'text', 'font-semibold text-slate-800')}</td>
+          <td>${makeInput('t4', r.id, 'w500', r.w500, 'text', 'text-center')}</td>
+          <td>${makeInput('t4', r.id, 'w1000', r.w1000, 'text', 'text-center')}</td>
+          <td>${makeInput('t4', r.id, 'w1500', r.w1500, 'text', 'text-center')}</td>
+          <td>${makeInput('t4', r.id, 'crack', r.crack)}</td>
+          <td>${makeInput('t4', r.id, 'deformation', r.deformation)}</td>
+          <td>${makeInput('t4', r.id, 'collapse', r.collapse)}</td>
+          ${makeDeleteBtn('t4', r.id)}
+        </tr>
+      `).join('');
+    }
+    function addRowT4() {
+      const newId = 't4_' + Date.now();
+      appData.t4.push({ id: newId, formula: `สูตรที่ ${appData.t4.length + 1}`, w500: "ผ่าน", w1000: "ผ่าน", w1500: "มีรอยร้าว", crack: "ขอบกระถาง", deformation: "เล็กน้อย", collapse: "ไม่ยุบ" });
+      saveToStorage();
+      renderTableT4();
+      showToast("เพิ่มแถวในตารางที่ 4 เรียบร้อย", "success");
+    }
+
+    // Table 5
+    function renderTableT5() {
+      const tbody = document.getElementById('tbodyT5');
+      tbody.innerHTML = appData.t5.map(r => `
+        <tr>
+          <td>${makeInput('t5', r.id, 'formula', r.formula, 'text', 'font-semibold text-slate-800')}</td>
+          <td>${makeInput('t5', r.id, 'moves', r.moves, 'number', 'text-center font-bold')}</td>
+          <td>${makeInput('t5', r.id, 'cracks', r.cracks)}</td>
+          <td>${makeInput('t5', r.id, 'deformation', r.deformation)}</td>
+          <td>${makeInput('t5', r.id, 'overallStatus', r.overallStatus)}</td>
+          ${makeDeleteBtn('t5', r.id)}
+        </tr>
+      `).join('');
+    }
+    function addRowT5() {
+      const newId = 't5_' + Date.now();
+      appData.t5.push({ id: newId, formula: `สูตรที่ ${appData.t5.length + 1}`, moves: 20, cracks: "ไม่มี", deformation: "ไม่มี", overallStatus: "สมบูรณ์ดี" });
+      saveToStorage();
+      renderTableT5();
+      showToast("เพิ่มแถวในตารางที่ 5 เรียบร้อย", "success");
+    }
+
+    // Table 6
+    function renderTableT6() {
+      const tbody = document.getElementById('tbodyT6');
+      tbody.innerHTML = appData.t6.map(r => `
+        <tr>
+          <td>${makeInput('t6', r.id, 'formula', r.formula, 'text', 'font-semibold text-slate-800')}</td>
+          <td>${makeInput('t6', r.id, 'planted', r.planted, 'number', 'text-center')}</td>
+          <td>${makeInput('t6', r.id, 'germinated', r.germinated, 'number', 'text-center')}</td>
+          <td id="t6_rate_${r.id}" class="text-center font-bold font-mono text-emerald-700 bg-emerald-50/50">${r.rate}%</td>
+          ${makeDeleteBtn('t6', r.id)}
+        </tr>
+      `).join('');
+    }
+    function addRowT6() {
+      const newId = 't6_' + Date.now();
+      appData.t6.push({ id: newId, formula: `สูตรที่ ${appData.t6.length + 1}`, planted: 20, germinated: 18, rate: 90.0 });
+      saveToStorage();
+      renderTableT6();
+      showToast("เพิ่มแถวในตารางที่ 6 เรียบร้อย", "success");
+    }
+
+    // Table 7
+    function renderTableT7() {
+      const tbody = document.getElementById('tbodyT7');
+      tbody.innerHTML = appData.t7.map(r => {
+        const makeT7SubInputs = (fKey, label) => {
+          const f = r[fKey] || {};
+          return `
+            <div class="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1">
+              <div class="font-bold text-[11px] text-emerald-800 border-b border-slate-200 pb-0.5 mb-1">${label}</div>
+              <div class="grid grid-cols-2 gap-1">
+                <div>
+                  <span class="text-[10px] text-slate-400 block">สูง (ซม.):</span>
+                  <input type="number" step="any" value="${f.height ?? ''}" oninput="updateT7Field('${r.id}', '${fKey}', 'height', this.value, true)" class="mini-sub-input text-center">
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-400 block">ใบ (ใบ):</span>
+                  <input type="number" value="${f.leaves ?? ''}" oninput="updateT7Field('${r.id}', '${fKey}', 'leaves', this.value, true)" class="mini-sub-input text-center">
+                </div>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">สีของใบ:</span>
+                <input type="text" value="${f.color ?? ''}" oninput="updateT7Field('${r.id}', '${fKey}', 'color', this.value)" class="mini-sub-input">
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">ความสมบูรณ์:</span>
+                <input type="text" value="${f.health ?? ''}" oninput="updateT7Field('${r.id}', '${fKey}', 'health', this.value)" class="mini-sub-input">
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">ความชื้น (%):</span>
+                <input type="number" step="any" value="${f.moisture ?? ''}" oninput="updateT7Field('${r.id}', '${fKey}', 'moisture', this.value, true)" class="mini-sub-input text-center">
+              </div>
+            </div>
+          `;
+        };
+
+        return `
+          <tr>
+            <td class="text-center font-semibold bg-emerald-50/40">
+              <div class="font-bold text-emerald-800 font-mono text-xs">ครั้งที่ ${r.round}</div>
+              <div class="text-[11px] text-slate-500 font-sarabun mt-1">${formatThaiDate(r.date)}</div>
+            </td>
+            <td>${makeT7SubInputs('f1', 'สูตรที่ 1')}</td>
+            <td>${makeT7SubInputs('f2', 'สูตรที่ 2')}</td>
+            <td>${makeT7SubInputs('f3', 'สูตรที่ 3')}</td>
+            <td>${makeT7SubInputs('fc', 'ชุดควบคุม')}</td>
+            ${makeDeleteBtn('t7', r.id)}
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function autoGenerateT7Round() {
+      const roundInput = document.getElementById('newT7Round');
+      if (roundInput) {
+        roundInput.value = (appData.t7 ? appData.t7.length : 0) + 1;
+      }
+    }
+
+    function addNewT7Row() {
+      const dateVal = document.getElementById('newT7Date').value;
+      if (!dateVal) {
+        showAlertModal("กรุณาระบุวันที่", "โปรดเลือกวันที่ในการบันทึกรอบการทดลอง");
+        return;
+      }
+      const nextRound = appData.t7.length + 1;
+      const newId = 't7_' + Date.now();
+      appData.t7.push({
+        id: newId,
+        round: nextRound,
+        date: dateVal,
+        f1: { height: 0, leaves: 0, color: "เขียว", health: "ปกติ", moisture: 50 },
+        f2: { height: 0, leaves: 0, color: "เขียว", health: "ปกติ", moisture: 50 },
+        f3: { height: 0, leaves: 0, color: "เขียว", health: "ปกติ", moisture: 50 },
+        fc: { height: 0, leaves: 0, color: "เขียว", health: "ปกติ", moisture: 50 }
+      });
+      saveToStorage();
+      renderTableT7();
+      autoGenerateT7Round();
+      showToast(`เพิ่มรอบบันทึกครั้งที่ ${nextRound} เรียบร้อยแล้ว`, "success");
+    }
+
+    // Table 8
+    function renderTableT8() {
+      const tbody = document.getElementById('tbodyT8');
+      tbody.innerHTML = appData.t8.map(r => `
+        <tr>
+          <td>${makeInput('t8', r.id, 'formula', r.formula, 'text', 'font-semibold text-slate-800')}</td>
+          <td>${makeInput('t8', r.id, 'avgHeight', r.avgHeight, 'number', 'text-center font-bold')}</td>
+          <td>${makeInput('t8', r.id, 'avgLeaves', r.avgLeaves, 'number', 'text-center font-bold')}</td>
+          <td>${makeInput('t8', r.id, 'overallGrowth', r.overallGrowth)}</td>
+          ${makeDeleteBtn('t8', r.id)}
+        </tr>
+      `).join('');
+    }
+    function addRowT8() {
+      const newId = 't8_' + Date.now();
+      appData.t8.push({ id: newId, formula: `สูตรที่ ${appData.t8.length + 1}`, avgHeight: 10.0, avgLeaves: 4.0, overallGrowth: "ปกติ" });
+      saveToStorage();
+      renderTableT8();
+      showToast("เพิ่มแถวในตารางที่ 8 เรียบร้อย", "success");
+    }
+
+    // Table 9
+    function renderTableT9() {
+      const tbody = document.getElementById('tbodyT9');
+      tbody.innerHTML = appData.t9.map(r => `
+        <tr>
+          <td>${makeInput('t9', r.id, 'week', r.week, 'text', 'font-bold text-center text-teal-800')}</td>
+          <td>${makeInput('t9', r.id, 'formula', r.formula, 'text', 'font-semibold text-slate-800')}</td>
+          <td>${makeInput('t9', r.id, 'colorChange', r.colorChange)}</td>
+          <td>${makeInput('t9', r.id, 'breakdown', r.breakdown)}</td>
+          <td>${makeInput('t9', r.id, 'softening', r.softening)}</td>
+          <td>${makeInput('t9', r.id, 'mold', r.mold)}</td>
+          <td>${makeInput('t9', r.id, 'notes', r.notes)}</td>
+          ${makeDeleteBtn('t9', r.id)}
+        </tr>
+      `).join('');
+    }
+    function addRowT9() {
+      const newId = 't9_' + Date.now();
+      appData.t9.push({ id: newId, week: `สัปดาห์ที่ ${appData.t9.length + 1}`, formula: "สูตรที่ 1", colorChange: "ปกติ", breakdown: "ไม่มี", softening: "เล็กน้อย", mold: "ไม่มี", notes: "-" });
+      saveToStorage();
+      renderTableT9();
+      showToast("เพิ่มแถวในตารางที่ 9 เรียบร้อย", "success");
+    }
+
+    // Table 10
+    function renderTableT10() {
+      const tbody = document.getElementById('tbodyT10');
+      tbody.innerHTML = appData.t10.map(r => `
+        <tr>
+          <td>${makeInput('t10', r.id, 'formula', r.formula, 'text', 'font-semibold text-slate-800')}</td>
+          <td>${makeInput('t10', r.id, 'startDegrade', r.startDegrade, 'text', 'text-center')}</td>
+          <td>${makeInput('t10', r.id, 'startBreak', r.startBreak, 'text', 'text-center')}</td>
+          <td>${makeInput('t10', r.id, 'fullDegrade', r.fullDegrade, 'text', 'text-center font-bold text-teal-700')}</td>
+          ${makeDeleteBtn('t10', r.id)}
+        </tr>
+      `).join('');
+    }
+    function addRowT10() {
+      const newId = 't10_' + Date.now();
+      appData.t10.push({ id: newId, formula: `สูตรที่ ${appData.t10.length + 1}`, startDegrade: "7 วัน", startBreak: "14 วัน", fullDegrade: "30 วัน" });
+      saveToStorage();
+      renderTableT10();
+      showToast("เพิ่มแถวในตารางที่ 10 เรียบร้อย", "success");
+    }
+
+    // Table 11
+    function renderTableT11() {
+      const tbody = document.getElementById('tbodyT11');
+      tbody.innerHTML = appData.t11.map(r => `
+        <tr>
+          <td>${makeInput('t11', r.id, 'topic', r.topic, 'text', 'font-bold text-slate-800')}</td>
+          <td>${makeInput('t11', r.id, 'f1', r.f1)}</td>
+          <td>${makeInput('t11', r.id, 'f2', r.f2)}</td>
+          <td>${makeInput('t11', r.id, 'f3', r.f3)}</td>
+          <td>${makeInput('t11', r.id, 'control', r.control)}</td>
+          <td>${makeInput('t11', r.id, 'conclusion', r.conclusion, 'text', 'font-semibold text-indigo-900')}</td>
+          ${makeDeleteBtn('t11', r.id)}
+        </tr>
+      `).join('');
+    }
+    function addRowT11() {
+      const newId = 't11_' + Date.now();
+      appData.t11.push({ id: newId, topic: "หัวข้อใหม่", f1: "ดี", f2: "ดีมาก", f3: "ปานกลาง", control: "พอใช้", conclusion: "สูตรที่ 2 เหมาะสม" });
+      saveToStorage();
+      renderTableT11();
+      showToast("เพิ่มแถวในตารางที่ 11 เรียบร้อย", "success");
+    }
+
+    // Table 12
+    function renderTableT12() {
+      const tbody = document.getElementById('tbodyT12');
+      tbody.innerHTML = appData.t12.map(r => `
+        <tr>
+          <td>${makeInput('t12', r.id, 'formula', r.formula, 'text', 'font-semibold text-slate-800')}</td>
+          <td>${makeInput('t12', r.id, 'waterScore', r.waterScore, 'text', 'text-center')}</td>
+          <td>${makeInput('t12', r.id, 'strengthScore', r.strengthScore, 'text', 'text-center')}</td>
+          <td>${makeInput('t12', r.id, 'growthScore', r.growthScore, 'text', 'text-center')}</td>
+          <td>${makeInput('t12', r.id, 'degradeScore', r.degradeScore, 'text', 'text-center')}</td>
+          <td>${makeInput('t12', r.id, 'overallRank', r.overallRank, 'text', 'text-center font-bold text-indigo-700 bg-indigo-50/50')}</td>
+          ${makeDeleteBtn('t12', r.id)}
+        </tr>
+      `).join('');
+    }
+    function addRowT12() {
+      const newId = 't12_' + Date.now();
+      appData.t12.push({ id: newId, formula: `สูตรที่ ${appData.t12.length + 1}`, waterScore: "4.0", strengthScore: "4.0", growthScore: "4.0", degradeScore: "4.0", overallRank: "ระดับดี" });
+      saveToStorage();
+      renderTableT12();
+      showToast("เพิ่มแถวในตารางที่ 12 เรียบร้อย", "success");
+    }
+
+    // Table 13
+    function renderTableT13() {
+      const tbody = document.getElementById('tbodyT13');
+      tbody.innerHTML = appData.t13.map(r => `
+        <tr>
+          <td>${makeInput('t13', r.id, 'formula', r.formula, 'text', 'font-semibold text-slate-800')}</td>
+          <td>${makeInput('t13', r.id, 'materialCost', r.materialCost, 'number', 'text-center font-bold')}</td>
+          <td>${makeInput('t13', r.id, 'yieldPots', r.yieldPots, 'number', 'text-center')}</td>
+          <td id="t13_cost_${r.id}" class="text-center font-bold font-mono text-amber-800 bg-amber-50/60">฿${(r.costPerPot || 0).toFixed(2)}</td>
+          <td>${makeInput('t13', r.id, 'feasibility', r.feasibility)}</td>
+          ${makeDeleteBtn('t13', r.id)}
+        </tr>
+      `).join('');
+    }
+    function addRowT13() {
+      const newId = 't13_' + Date.now();
+      appData.t13.push({ id: newId, formula: `สูตรที่ ${appData.t13.length + 1}`, materialCost: 50.0, yieldPots: 25, costPerPot: 2.0, feasibility: "คุ้มค่า" });
+      saveToStorage();
+      renderTableT13();
+      showToast("เพิ่มแถวในตารางที่ 13 เรียบร้อย", "success");
+    }
+
+    // Budget Management
+    function renderBudgetSection() {
+      document.getElementById('budgetTotalInput').value = appData.budgetTotal || 15000;
+      
+      const totalSpent = (appData.expenses || []).reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+      const totalBudget = Number(appData.budgetTotal) || 15000;
+      const remain = totalBudget - totalSpent;
+      const percent = totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : '0.0';
+
+      document.getElementById('statBudgetTotal').innerText = `฿${totalBudget.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+      document.getElementById('statBudgetSpent').innerText = `฿${totalSpent.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+      document.getElementById('statBudgetRemain').innerText = `฿${remain.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+      document.getElementById('statBudgetPercent').innerText = `${percent}%`;
+
+      renderExpenseTable();
+    }
+
+    function updateBudgetTotal(val) {
+      appData.budgetTotal = Number(val) || 0;
+      saveToStorage();
+      renderBudgetSection();
+    }
+
+    function autoGenerateExpenseCode() {
+      const dateInput = document.getElementById('newExpDate').value;
+      const categoryInput = document.getElementById('newExpCategory').value;
+      const codeEl = document.getElementById('newExpCode');
+      
+      if (!dateInput || !categoryInput) return;
+
+      const dateObj = new Date(dateInput);
+      const dd = String(dateObj.getDate()).padStart(2, '0');
+      const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const yy = String(dateObj.getFullYear() + 543).slice(-2);
+
+      const categoryExpenses = (appData.expenses || []).filter(e => e.category === categoryInput);
+      const runNum = String(categoryExpenses.length + 1).padStart(2, '0');
+
+      codeEl.value = `${dd}/${mm}/${yy}-${categoryInput}-${runNum}`;
+    }
+
+    function calcNewExpenseTotal() {
+      const qty = Number(document.getElementById('newExpQty').value) || 0;
+      const price = Number(document.getElementById('newExpPrice').value) || 0;
+      const total = qty * price;
+      document.getElementById('newExpTotal').value = total.toFixed(2);
+    }
+
+    function addNewExpense() {
+      const code = document.getElementById('newExpCode').value;
+      const date = document.getElementById('newExpDate').value;
+      const category = document.getElementById('newExpCategory').value;
+      const item = document.getElementById('newExpItem').value.trim();
+      const qty = Number(document.getElementById('newExpQty').value) || 1;
+      const price = Number(document.getElementById('newExpPrice').value) || 0;
+      const total = qty * price;
+      const driveUrl = document.getElementById('newExpDriveUrl').value.trim();
+      const receiptFileInput = document.getElementById('newExpReceiptFile');
+
+      if (!item) {
+        showAlertModal("กรุณาระบุรายการ", "โปรดกรอกชื่อรายการค่าใช้จ่ายก่อนทำการบันทึก");
+        return;
+      }
+
+      const saveExpense = (receiptData) => {
+        const newExp = {
+          id: 'exp_' + Date.now(),
+          code,
+          date,
+          category,
+          item,
+          qty,
+          price,
+          total,
+          receipt: receiptData || '',
+          driveUrl
+        };
+
+        if (!appData.expenses) appData.expenses = [];
+        appData.expenses.push(newExp);
+        saveToStorage();
+        renderBudgetSection();
+
+        document.getElementById('newExpItem').value = '';
+        document.getElementById('newExpQty').value = '1';
+        document.getElementById('newExpPrice').value = '';
+        document.getElementById('newExpTotal').value = '0.00';
+        document.getElementById('newExpDriveUrl').value = '';
+        document.getElementById('newExpReceiptFile').value = '';
+        autoGenerateExpenseCode();
+
+        showToast("บันทึกรายการค่าใช้จ่ายสำเร็จ", "success");
+      };
+
+      if (receiptFileInput.files && receiptFileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => saveExpense(e.target.result);
+        reader.readAsDataURL(receiptFileInput.files[0]);
+      } else {
+        saveExpense('');
+      }
+    }
+
+    function renderExpenseTable() {
+      const tbody = document.getElementById('tbodyExpenses');
+      if (!tbody) return;
+
+      tbody.innerHTML = (appData.expenses || []).map(e => {
+        let receiptBadge = '<span class="text-slate-400 text-[11px]">-</span>';
+        if (e.receipt) {
+          receiptBadge = `
+            <button onclick="viewReceipt('${e.id}')" class="px-2 py-1 rounded bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-[11px] font-prompt font-semibold inline-flex items-center gap-1">
+              <i class="fa-solid fa-image"></i> ดูสลิป
+            </button>
+          `;
+        } else if (e.driveUrl) {
+          receiptBadge = `
+            <a href="${e.driveUrl}" target="_blank" class="px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-[11px] font-prompt font-semibold inline-flex items-center gap-1">
+              <i class="fa-solid fa-link"></i> ลิงก์แนบ
+            </a>
+          `;
+        }
+
+        return `
+          <tr>
+            <td class="font-mono text-xs font-bold text-rose-800">${e.code}</td>
+            <td class="text-xs text-slate-600">${formatThaiDate(e.date)}</td>
+            <td class="text-center font-bold text-xs"><span class="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">${e.category}</span></td>
+            <td class="font-semibold text-slate-800 text-xs">${e.item}</td>
+            <td class="text-center text-xs font-mono">${e.qty}</td>
+            <td class="text-right text-xs font-mono">฿${Number(e.price).toFixed(2)}</td>
+            <td class="text-right text-xs font-mono font-bold text-rose-800 bg-rose-50/40">฿${Number(e.total).toFixed(2)}</td>
+            <td class="text-center print:hidden">${receiptBadge}</td>
+            <td class="text-center editor-only-btn print:hidden">
+              <button onclick="confirmDeleteExpense('${e.id}')" class="text-slate-400 hover:text-red-600 p-1 transition">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function confirmDeleteExpense(expId) {
+      showConfirmModal("คุณแน่ใจหรือไม่ว่าต้องการลบรายการค่าใช้จ่ายนี้?", () => {
+        appData.expenses = appData.expenses.filter(e => e.id !== expId);
+        saveToStorage();
+        renderBudgetSection();
+        showToast("ลบรายการค่าใช้จ่ายเรียบร้อย", "success");
+      });
+    }
+
+    function viewReceipt(expId) {
+      const exp = (appData.expenses || []).find(e => e.id === expId);
+      if (exp && exp.receipt) {
+        document.getElementById('lightboxTitle').innerText = `หลักฐาน: ${exp.code} - ${exp.item}`;
+        document.getElementById('lightboxImage').src = exp.receipt;
+        document.getElementById('receiptLightboxModal').classList.remove('hidden');
+        document.getElementById('receiptLightboxModal').classList.add('flex');
+      }
+    }
+
+    function closeReceiptLightbox() {
+      document.getElementById('receiptLightboxModal').classList.add('hidden');
+      document.getElementById('receiptLightboxModal').classList.remove('flex');
+    }
+
+    // Chart Renderer
+    function renderWaterChart() {
+      const ctx = document.getElementById('chartWaterRetention');
+      if (!ctx) return;
+
+      const labels = (appData.t3 || []).map(r => r.formula || 'สูตร');
+      const dataValues = (appData.t3 || []).map(r => Number(r.avg || 0));
+
+      if (chartWaterInstance) {
+        chartWaterInstance.destroy();
+      }
+
+      chartWaterInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'เปอร์เซ็นต์การอุ้มน้ำเฉลี่ย (%)',
+            data: dataValues,
+            backgroundColor: [
+              'rgba(59, 130, 246, 0.7)',
+              'rgba(16, 185, 129, 0.7)',
+              'rgba(245, 158, 11, 0.7)',
+              'rgba(139, 92, 246, 0.7)',
+              'rgba(236, 72, 153, 0.7)'
+            ],
+            borderColor: [
+              '#2563eb',
+              '#059669',
+              '#d97706',
+              '#7c3aed',
+              '#db2777'
+            ],
+            borderWidth: 1.5,
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (context) => ` การอุ้มน้ำเฉลี่ย: ${context.raw}%`
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: { display: true, text: 'เปอร์เซ็นต์ (%)', font: { family: 'Prompt' } }
+            },
+            x: {
+              ticks: { font: { family: 'Prompt' } }
+            }
+          }
+        }
+      });
+    }
+
+    // Modal & Toast Helpers
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toastNotification');
+      const msgEl = document.getElementById('toastMessage');
+      const icon = document.getElementById('toastIcon');
+
+      msgEl.innerText = msg;
+      if (type === 'success') {
+        icon.className = 'fa-solid fa-circle-check text-emerald-400 text-base';
+      } else if (type === 'error') {
+        icon.className = 'fa-solid fa-circle-xmark text-rose-400 text-base';
+      } else {
+        icon.className = 'fa-solid fa-circle-info text-blue-400 text-base';
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    function showConfirmModal(msg, acceptCallback) {
+      document.getElementById('confirmModalMessage').innerText = msg;
+      pendingConfirmAction = acceptCallback;
+      document.getElementById('customConfirmModal').classList.remove('hidden');
+      document.getElementById('customConfirmModal').classList.add('flex');
+    }
+
+    function handleConfirmCancel() {
+      pendingConfirmAction = null;
+      document.getElementById('customConfirmModal').classList.add('hidden');
+      document.getElementById('customConfirmModal').classList.remove('flex');
+    }
+
+    function handleConfirmAccept() {
+      if (pendingConfirmAction) {
+        pendingConfirmAction();
+        pendingConfirmAction = null;
+      }
+      document.getElementById('customConfirmModal').classList.add('hidden');
+      document.getElementById('customConfirmModal').classList.remove('flex');
+    }
+
+    function showAlertModal(title, msg) {
+      document.getElementById('alertModalTitle').innerText = title;
+      document.getElementById('alertModalMessage').innerText = msg;
+      document.getElementById('customAlertModal').classList.remove('hidden');
+      document.getElementById('customAlertModal').classList.add('flex');
+    }
+
+    function closeAlertModal() {
+      document.getElementById('customAlertModal').classList.add('hidden');
+      document.getElementById('customAlertModal').classList.remove('flex');
+    }
+
+    function toggleBackupMenu() {
+      const menu = document.getElementById('backupMenu');
+      menu.classList.toggle('hidden');
+    }
+
+    function exportJSONBackup() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `JSTP_Research_Backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      toggleBackupMenu();
+      showToast("ส่งออกไฟล์สำรอง JSON เรียบร้อย", "success");
+    }
+
+    function importJSONBackup(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported && typeof imported === 'object') {
+            appData = imported;
+            saveToStorage();
+            renderAllTables();
+            renderBudgetSection();
+            renderWaterChart();
+            showToast("นำเข้าข้อมูลสำรองเรียบร้อยแล้ว", "success");
+          } else {
+            showAlertModal("รูปแบบไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์ JSON ที่ได้จากการสำรองข้อมูลของระบบนี้");
+          }
+        } catch (err) {
+          showAlertModal("เกิดข้อผิดพลาด", "ไม่สามารถอ่านไฟล์ JSON ได้");
+        }
+      };
+      reader.readAsText(file);
+      toggleBackupMenu();
+    }
+
+    function confirmResetDefaults() {
+      toggleBackupMenu();
+      showConfirmModal("คุณแน่ใจหรือไม่ว่าต้องการรีเซ็ตกลับเป็นข้อมูลเริ่มต้น? ข้อมูลที่แก้ไขจะถูกแทนที่ทั้งหมด", () => {
+        appData = JSON.parse(JSON.stringify(DEFAULT_JSTP_DATA));
+        saveToStorage();
+        renderAllTables();
+        renderBudgetSection();
+        renderWaterChart();
+        showToast("รีเซ็ตเป็นข้อมูลตั้งต้นเรียบร้อยแล้ว", "info");
+      });
+    }
+  </script>
+  <!-- ==================== COPYRIGHT / PROJECT DOCUMENTS ==================== -->
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-2 no-print">
+    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-6 text-center">
+      <div class="flex items-center justify-center gap-2 text-slate-700 mb-2">
+        <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+        <span class="font-prompt font-bold text-sm">สงวนลิขสิทธิ์</span>
+      </div>
+      <p class="font-sarabun text-xs text-slate-500 leading-relaxed">
+        ผลงาน ระบบบันทึกผลการทดลอง และเนื้อหาที่จัดทำขึ้นสำหรับโครงงาน JSTP สงวนลิขสิทธิ์โดยผู้จัดทำ
+      </p>
+      <a href="https://drive.google.com/drive/folders/1Pl-pAzvNdg5-9iwTuwYwOHW72JYYUFJS?usp=sharing" target="_blank" rel="noopener noreferrer"
+         class="inline-flex items-center justify-center gap-2 mt-3 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-prompt font-semibold shadow-sm transition">
+        <i class="fa-brands fa-google-drive"></i>
+        อ่านเอกสาร / ข้อมูลลิขสิทธิ์เพิ่มเติม
+        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+      </a>
+      <p class="mt-3 text-[10px] text-slate-400 font-mono">© JSTP Research Suite V4</p>
+    </div>
+  </footer>
+
+</body>
+</html>
