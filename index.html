@@ -125,11 +125,32 @@
     body.role-viewer .meta-input {
       background-color: transparent !important;
       border-color: transparent !important;
-      pointer-events: none !important;
+      pointer-events: auto !important;
+      user-select: text !important;
+      cursor: text !important;
       color: #334155;
     }
     body.role-viewer .editor-only-btn {
       display: none !important;
+    }
+
+    /* Viewer mode: fields remain non-editable but can be horizontally scrolled. */
+    body.role-viewer .cell-input,
+    body.role-viewer .mini-sub-input,
+    body.role-viewer .meta-input {
+      pointer-events: auto !important;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      cursor: text !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      text-overflow: clip !important;
+    }
+
+    body.role-viewer .data-table td,
+    body.role-viewer .data-table th {
+      overflow: visible !important;
+      text-overflow: clip !important;
     }
 
     /* Print Optimization */
@@ -137,23 +158,381 @@
       @page { size: A4 portrait; margin: 10mm; }
       .no-print, .editor-only-btn, .fa-trash-can { display: none !important; }
       body { background: white !important; padding: 0 !important; }
-      .table-card { break-inside: avoid; margin-bottom: 2rem !important; box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
+      /* Keep each table heading + its table together whenever the whole table can fit on a page. */
+      .table-card {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        -webkit-column-break-inside: avoid !important;
+        margin-bottom: 1rem !important;
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+      .table-card > div:first-child {
+        break-after: avoid-page !important;
+        page-break-after: avoid !important;
+      }
+      .table-card h3,
+      .table-card p {
+        break-after: avoid-page !important;
+        page-break-after: avoid !important;
+      }
       .cell-input, .mini-sub-input, .meta-input { border: none !important; padding: 0 !important; background-color: transparent !important; }
       .table-container { overflow: visible !important; width: 100% !important; }
       .data-table { table-layout: auto !important; width: 100% !important; max-width: 100% !important; }
-      .data-table th, .data-table td { 
-        white-space: normal !important; 
-        word-wrap: break-word !important; 
-        overflow-wrap: break-word !important;
-        padding: 0.3rem 0.25rem !important; 
+      .data-table th, .data-table td {
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        hyphens: none !important;
+        padding: 0.3rem 0.25rem !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        vertical-align: top !important;
       }
       #sec-t7 .data-table { table-layout: fixed !important; }
+
+      /* ตารางที่ 11: ล็อกความกว้างตามกรอบตาราง และบังคับข้อความยาวให้ขึ้นบรรทัดใหม่ */
+      #sec-t11 .table-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+      }
+      #sec-t11 .data-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
+      }
+      #sec-t11 .data-table th,
+      #sec-t11 .data-table td {
+        min-width: 0 !important;
+        max-width: none !important;
+        width: auto !important;
+        white-space: normal !important;
+        overflow: hidden !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        box-sizing: border-box !important;
+      }
+      #sec-t11 .data-table th:nth-child(1),
+      #sec-t11 .data-table td:nth-child(1) { width: 16% !important; }
+      #sec-t11 .data-table th:nth-child(2),
+      #sec-t11 .data-table td:nth-child(2),
+      #sec-t11 .data-table th:nth-child(3),
+      #sec-t11 .data-table td:nth-child(3),
+      #sec-t11 .data-table th:nth-child(4),
+      #sec-t11 .data-table td:nth-child(4),
+      #sec-t11 .data-table th:nth-child(5),
+      #sec-t11 .data-table td:nth-child(5) { width: 14% !important; }
+      #sec-t11 .data-table th:nth-child(6),
+      #sec-t11 .data-table td:nth-child(6) { width: 28% !important; }
+      #sec-t11 .print-full-value {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        white-space: pre-wrap !important;
+        overflow: visible !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        line-height: 1.35 !important;
+      }
+
       .data-table th { font-size: 0.75rem !important; }
       .data-table td { font-size: 0.75rem !important; }
       .cell-input { font-size: 0.75rem !important; }
       .mini-sub-input { font-size: 0.65rem !important; word-wrap: break-word !important; white-space: normal !important; }
     }
-  </style>
+
+
+    /* ===== FINAL TEXT VISIBILITY / SCROLL FIX =====
+       Applied globally to ALL JSTP tables, including the JSTP project-information area. */
+    html, body { max-width: 100%; overflow-x: hidden; }
+
+    /* Every table gets its own horizontal scrolling area when necessary. */
+    .table-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow-x: auto !important;
+      overflow-y: visible !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior-x: contain;
+      scrollbar-width: auto;
+    }
+
+    /* Let tables become wider than the screen instead of shrinking/clipping cells. */
+    .table-container .data-table {
+      width: max-content !important;
+      min-width: 100% !important;
+      max-width: none !important;
+      table-layout: auto !important;
+    }
+
+    .data-table th,
+    .data-table td {
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      overflow-wrap: break-word !important;
+      word-break: normal !important;
+      hyphens: none !important;
+      height: auto !important;
+      min-height: 0 !important;
+      vertical-align: top !important;
+    }
+
+    /* Keep useful room for every column. The whole table can be swiped if it is wider. */
+    .data-table th { min-width: 120px; }
+    .data-table td { min-width: 120px; }
+
+    /* Text-bearing table cells get a readable maximum width so long sentences wrap. */
+    .data-table td:not(:has(input)):not(:has(select)) {
+      max-width: 460px;
+    }
+
+    /* Form controls: do NOT clip their values. Long values can be swiped horizontally. */
+    .data-table .cell-input,
+    .data-table .mini-sub-input,
+    .data-table td > input,
+    .data-table td > select,
+    .data-table td > textarea {
+      box-sizing: border-box !important;
+      max-width: none !important;
+      min-width: 220px !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      text-overflow: clip !important;
+      white-space: nowrap !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* Wider text fields so the common long Thai values are readable before swiping. */
+    .data-table .cell-input[type="text"],
+    .data-table .cell-input[type="url"],
+    .data-table .mini-sub-input[type="text"] {
+      min-width: 320px !important;
+    }
+
+    /* Number/date/select controls remain compact. */
+    .data-table .cell-input[type="number"],
+    .data-table .cell-input[type="date"],
+    .data-table .mini-sub-input[type="number"] {
+      min-width: 120px !important;
+    }
+
+    /* JSTP project title / author / advisor / school fields: never visually truncate. */
+    .meta-input {
+      box-sizing: border-box !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      overflow-x: auto !important;
+      text-overflow: clip !important;
+      white-space: nowrap !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* The print-only text versions always show complete wrapped content. */
+    #metaTitlePrint,
+    #metaAuthorsPrint,
+    #metaAdvisorPrint,
+    #metaSchoolPrint {
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      overflow-wrap: anywhere !important;
+      word-break: normal !important;
+    }
+
+    /* Do not let common Tailwind clipping utilities hide application data. */
+    .data-table .truncate,
+    .data-table .text-ellipsis,
+    .data-table .overflow-hidden {
+      overflow: visible !important;
+      text-overflow: clip !important;
+      white-space: normal !important;
+    }
+
+    /* Mobile: preserve a comfortable reading width; swipe the table rather than cutting it. */
+    @media (max-width: 768px) {
+      .table-container .data-table {
+        min-width: max-content !important;
+      }
+      .data-table th,
+      .data-table td {
+        padding-left: 0.7rem !important;
+        padding-right: 0.7rem !important;
+      }
+      .data-table td:not(:has(input)):not(:has(select)) {
+        max-width: 380px !important;
+      }
+      .data-table .cell-input[type="text"],
+      .data-table .cell-input[type="url"],
+      .data-table .mini-sub-input[type="text"] {
+        min-width: 280px !important;
+      }
+    }
+  
+/* COMPACT TABLE SPACING */
+.table-container { margin-bottom: 10px !important; padding: 0 !important; }
+.data-table { border-spacing: 0 !important; margin: 0 !important; }
+.data-table th, .data-table td { padding: 7px 9px !important; }
+.data-table + .data-table { margin-top: 8px !important; }
+.section-card { margin-bottom: 12px !important; }
+
+    /* FULL-TEXT PRINT OVERRIDE: never clip form values; allow wrapping and page breaks. */
+    @media print {
+      html, body {
+        width: 100% !important;
+        max-width: none !important;
+        overflow: visible !important;
+      }
+      .print-full-value {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        height: auto !important;
+        min-height: 1.2em !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        color: #111827 !important;
+        white-space: pre-wrap !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+        word-break: normal !important;
+        line-height: 1.35 !important;
+      }
+      .table-card {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+        overflow: visible !important;
+      }
+      .data-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: auto !important;
+        overflow: visible !important;
+      }
+      .data-table thead {
+        display: table-header-group !important;
+      }
+      .data-table tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      .data-table th, .data-table td {
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+        word-break: normal !important;
+        vertical-align: top !important;
+      }
+      .table-container {
+        width: 100% !important;
+        max-width: none !important;
+        overflow: visible !important;
+      }
+      /* Hide only controls/buttons that are explicitly marked as non-printing. */
+      .no-print, .editor-only-btn, .print\:hidden { display: none !important; }
+    }
+
+
+    /* ===== PRINT ALL TABLES / KEEP HEADINGS WITH TABLES ===== */
+    @media print {
+      /* Every table is treated the same way; no special case for table 11. */
+      .table-card {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        overflow: visible !important;
+      }
+      .table-card > div:first-child,
+      .table-card h3,
+      .table-card h4,
+      .table-card p {
+        break-after: avoid-page !important;
+        page-break-after: avoid !important;
+      }
+      .table-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+      }
+      .data-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+      }
+      .data-table thead {
+        display: table-header-group !important;
+      }
+      .data-table tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      .data-table th,
+      .data-table td {
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: auto !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        hyphens: none !important;
+        vertical-align: top !important;
+      }
+      .print-full-value {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        box-sizing: border-box !important;
+        white-space: pre-wrap !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        line-height: 1.35 !important;
+      }
+      /* All original form controls are hidden only for print; their full values
+         are represented by .print-full-value blocks created by printReport(). */
+      .data-table input,
+      .data-table textarea,
+      .data-table select {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      /* Remove the old table-11-only width rules by forcing every section to obey
+         the same page-width constraints. */
+      [id^="sec-t"] .table-container,
+      [id^="sec-t"] .data-table {
+        max-width: 100% !important;
+      }
+    }
+</style>
 </head>
 <body class="role-editor">
 
@@ -207,7 +586,7 @@
         </button>
 
         <!-- Print PDF Button -->
-        <button onclick="window.print()" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs transition" title="พิมพ์รายงาน">
+        <button id="btnPrintReport" type="button" onclick="printReport()" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs transition" title="พิมพ์รายงาน">
           <i class="fa-solid fa-print"></i>
         </button>
 
@@ -1279,12 +1658,30 @@
       showToast("ออกจากระบบแล้ว กลับสู่โหมดดูอย่างเดียว", "info");
     }
 
+    // Strong viewer lock: also covers fields created dynamically after the initial render.
+    function enforceViewerLock() {
+      if (isEditorRole) return;
+      document.querySelectorAll('.cell-input, .mini-sub-input, .meta-input').forEach(el => {
+        if (el.tagName === 'SELECT') {
+          el.disabled = true;
+        } else {
+          el.readOnly = true;
+          el.setAttribute('readonly', 'readonly');
+        }
+      });
+    }
+
     function updateRoleUI() {
       const body = document.body;
       const badgeContainer = document.getElementById('roleBadgeContainer');
       const statusText = document.getElementById('statusText');
 
+      const fields = document.querySelectorAll('.cell-input, .mini-sub-input, .meta-input');
       if (isEditorRole) {
+        fields.forEach(el => {
+          if (el.tagName === 'SELECT') el.disabled = false;
+          else el.readOnly = false;
+        });
         body.classList.remove('role-viewer');
         body.classList.add('role-editor');
         badgeContainer.innerHTML = `
@@ -1299,6 +1696,10 @@
         `;
         statusText.innerHTML = `<i class="fa-solid fa-pen-to-square text-emerald-600 mr-1"></i> โหมดแก้ไข (Editor): คุณสามารถเพิ่ม ลบ และพิมพ์แก้ไขทุกตารางได้โดยตรง ข้อมูลจะถูกเซฟอัตโนมัติ`;
       } else {
+        fields.forEach(el => {
+          if (el.tagName === 'SELECT') el.disabled = true;
+          else el.readOnly = true;
+        });
         body.classList.remove('role-editor');
         body.classList.add('role-viewer');
         badgeContainer.innerHTML = `
@@ -1307,8 +1708,32 @@
           </button>
         `;
         statusText.innerHTML = `<i class="fa-solid fa-eye text-amber-600 mr-1"></i> โหมดผู้เข้าชม (Read-Only): ข้อมูลถูกล็อกให้อ่านได้อย่างเดียว กรุณาเข้าสู่ระบบเพื่อแก้ไขข้อมูล`;
+        enforceViewerLock();
       }
     }
+
+    // Prevent edits even if a table row/field is rendered dynamically after updateRoleUI().
+    document.addEventListener('beforeinput', function(e) {
+      if (!isEditorRole && e.target.closest('.cell-input, .mini-sub-input, .meta-input')) {
+        e.preventDefault();
+      }
+    }, true);
+    document.addEventListener('input', function(e) {
+      if (!isEditorRole && e.target.closest('.cell-input, .mini-sub-input, .meta-input')) {
+        e.preventDefault();
+        enforceViewerLock();
+      }
+    }, true);
+    document.addEventListener('change', function(e) {
+      if (!isEditorRole && e.target.closest('.cell-input, .mini-sub-input, .meta-input')) {
+        enforceViewerLock();
+      }
+    }, true);
+
+    const viewerLockObserver = new MutationObserver(() => {
+      if (!isEditorRole) enforceViewerLock();
+    });
+    viewerLockObserver.observe(document.body, { childList: true, subtree: true });
 
     function setViewMode(mode) {
       currentViewMode = mode;
@@ -1428,6 +1853,60 @@
         showToast("ลบข้อมูลเรียบร้อยแล้ว", "success");
       }
     }
+
+    // Reliable print action: convert form controls to full, wrapping text for print.
+    function printReport() {
+      const pairs = [
+        ['metaTitle', 'metaTitlePrint'],
+        ['metaAuthors', 'metaAuthorsPrint'],
+        ['metaAdvisor', 'metaAdvisorPrint'],
+        ['metaSchool', 'metaSchoolPrint']
+      ];
+      pairs.forEach(([src, dst]) => {
+        const a = document.getElementById(src);
+        const b = document.getElementById(dst);
+        if (a && b) b.textContent = a.value || '';
+      });
+
+      // Inputs are single-line HTML controls and can clip long values when printed.
+      // Temporarily replace them with normal wrapping blocks containing their full value.
+      const replacements = [];
+      document.querySelectorAll('input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select').forEach(el => {
+        if (el.type === 'hidden' || el.closest('.no-print') || el.closest('.editor-only-btn')) return;
+        let value = '';
+        if (el.tagName === 'SELECT') {
+          value = el.options[el.selectedIndex]?.text || '';
+        } else if (el.type === 'file') {
+          value = el.files?.[0]?.name || '';
+        } else {
+          value = el.value ?? '';
+        }
+        const block = document.createElement('div');
+        block.className = 'print-full-value';
+        block.textContent = value;
+        block.setAttribute('data-print-original-display', el.style.display || '');
+        el.style.display = 'none';
+        el.parentNode.insertBefore(block, el);
+        replacements.push({ el, block });
+      });
+
+      const restore = () => {
+        replacements.forEach(({el, block}) => {
+          el.style.display = block.getAttribute('data-print-original-display') || '';
+          block.remove();
+        });
+        window.removeEventListener('afterprint', restore);
+      };
+      window.addEventListener('afterprint', restore);
+
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          try { window.focus(); window.print(); }
+          catch (err) { restore(); alert('ไม่สามารถเปิดหน้าต่างพิมพ์ได้ กรุณาลองกดปุ่มอีกครั้ง'); }
+        }, 150);
+      });
+    }
+
 
     function updateMeta(field, val) {
       if (!appData.meta) appData.meta = {};
