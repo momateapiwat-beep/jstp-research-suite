@@ -19,6 +19,9 @@
   <!-- Chart.js for Scientific Visualizations -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- Three.js WebGL Engine for 3D Refractive Liquid Glass & Chrome Sculptures -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
   <!-- Tailwind Configuration -->
   <script>
     tailwind.config = {
@@ -45,25 +48,73 @@
     }
   </script>
 
-  <!-- Custom CSS for Responsive Tables and Print -->
+  <!-- Custom CSS for Dual Mode (3D Liquid Glass Pitch Deck Viewer vs HUD Editor) and Print -->
   <style>
+    html, body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
     body {
       font-family: 'Sarabun', sans-serif;
       background-color: #f8fafc;
       color: #1e293b;
+      transition: background-color 0.4s ease, color 0.3s ease;
     }
     h1, h2, h3, h4, .font-heading {
       font-family: 'Prompt', sans-serif;
     }
+
+    /* ==================== KEYFRAME ANIMATIONS (180s ULTRA-SMOOTH ROTATION) ==================== */
+    @keyframes dropBounce {
+      0% { transform: translate(-50%, -100%); opacity: 0; }
+      60% { transform: translate(-50%, 10%); opacity: 1; }
+      100% { transform: translate(-50%, 0); opacity: 1; }
+    }
+    @keyframes slowPitchSpin {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.02); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+    @keyframes slowPitchSpinReverse {
+      0% { transform: rotate(360deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.02); }
+      100% { transform: rotate(0deg) scale(1); }
+    }
+    @keyframes hudBlink {
+      0%, 100% { opacity: 0.9; }
+      50% { opacity: 0.35; }
+    }
+
+    .pitch-spin-slow {
+      animation: slowPitchSpin 180s linear infinite;
+      transform-origin: center center;
+      will-change: transform;
+    }
+    .pitch-spin-reverse {
+      animation: slowPitchSpinReverse 180s linear infinite;
+      transform-origin: center center;
+      will-change: transform;
+    }
+
+    /* ==================== BASE TABLE & INPUT STYLES ==================== */
     .table-container {
-      overflow-x: auto;
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow-x: auto !important;
+      overflow-y: visible !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior-x: contain;
       border-radius: 0.75rem;
       border: 1px solid #e2e8f0;
       background-color: #ffffff;
+      margin-bottom: 10px !important;
+      padding: 0 !important;
     }
     .data-table {
       width: 100%;
       border-collapse: collapse;
+      border-spacing: 0 !important;
+      margin: 0 !important;
       font-size: 0.875rem;
       text-align: left;
     }
@@ -71,16 +122,20 @@
       background-color: #f1f5f9;
       color: #334155;
       font-weight: 600;
-      padding: 0.75rem 0.6rem;
+      padding: 8px 10px !important;
       border-bottom: 2px solid #cbd5e1;
       white-space: nowrap;
       font-family: 'Prompt', sans-serif;
       font-size: 0.8125rem;
     }
     .data-table td {
-      padding: 0.5rem 0.5rem;
+      padding: 7px 10px !important;
       border-bottom: 1px solid #e2e8f0;
-      vertical-align: middle;
+      vertical-align: top !important;
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      word-break: normal !important;
     }
     .data-table tr:hover {
       background-color: #f8fafc;
@@ -118,80 +173,464 @@
       border-color: #16a34a;
       background-color: #ffffff;
     }
-    
-    body.role-viewer .cell-input,
-    body.role-viewer .mini-sub-input,
-    body.role-viewer .meta-input {
-      background-color: transparent !important;
-      border-color: transparent !important;
-      pointer-events: auto !important;
-      user-select: text !important;
-      cursor: text !important;
-      color: #334155;
-    }
-    body.role-viewer .editor-only-btn { display: none !important; }
-    body.role-viewer .cell-input,
-    body.role-viewer .mini-sub-input,
-    body.role-viewer .meta-input {
-      pointer-events: auto !important;
-      user-select: text !important;
-      -webkit-user-select: text !important;
-      cursor: text !important;
-      overflow-x: auto !important;
-      overflow-y: hidden !important;
-      text-overflow: clip !important;
-    }
-    body.role-viewer .data-table td,
-    body.role-viewer .data-table th { overflow: visible !important; text-overflow: clip !important; }
 
-    /* Print Optimization */
+    /* ==================== 1. VIEWER MODE: LIQUID GLASS & BLUE-WHITE PITCH DECK (#0038FF) ==================== */
+    body.role-viewer {
+      background-color: #f6f8fc;
+      background-image:
+        radial-gradient(at 12% 8%, rgba(255, 255, 255, 0.95) 0px, transparent 45%),
+        radial-gradient(at 88% 15%, rgba(0, 56, 255, 0.06) 0px, transparent 50%),
+        radial-gradient(at 15% 85%, rgba(0, 56, 255, 0.05) 0px, transparent 50%),
+        linear-gradient(135deg, #f8fafc 0%, #eef2f9 50%, #f5f7fb 100%);
+      background-attachment: fixed;
+      color: #0f172a;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Strictly hide all inputs, edit buttons, HUD, and save banner in Viewer Mode */
+    body.role-viewer .cell-input,
+    body.role-viewer .mini-sub-input,
+    body.role-viewer .meta-input,
+    body.role-viewer #budgetTotalInput,
+    body.role-viewer .editor-only-btn,
+    body.role-viewer #statusNotificationBanner,
+    body.role-viewer #editorHudFrame {
+      display: none !important;
+    }
+
+    /* Display pure text inside tables in Viewer Mode */
+    body.role-viewer .viewer-text {
+      display: block !important;
+      color: #0f172a;
+      font-weight: 500;
+      line-height: 1.55;
+    }
+    body.role-viewer #metaTitlePrint,
+    body.role-viewer #metaAuthorsPrint,
+    body.role-viewer #metaAdvisorPrint,
+    body.role-viewer #metaSchoolPrint,
+    body.role-viewer #budgetTotalViewerText {
+      display: block !important;
+    }
+    body.role-viewer #budgetTotalViewerText {
+      display: inline-block !important;
+    }
+    body.role-viewer #metaTitlePrint {
+      color: #0038ff !important;
+      font-weight: 800 !important;
+      letter-spacing: -0.02em;
+    }
+
+    /* Liquid Glass Header in Viewer Mode */
+    body.role-viewer header {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.78) 0%, rgba(248, 250, 255, 0.62) 100%) !important;
+      backdrop-filter: blur(28px) saturate(190%) !important;
+      -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.9) !important;
+      box-shadow: 0 10px 35px -10px rgba(0, 56, 255, 0.08), inset 0 -1px 0 rgba(0, 56, 255, 0.12) !important;
+    }
+    body.role-viewer header .from-jstp-600 {
+      background: linear-gradient(135deg, #0038ff 0%, #2563eb 100%) !important;
+      box-shadow: 0 8px 20px -4px rgba(0, 56, 255, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.6) !important;
+    }
+    body.role-viewer #btnViewAll {
+      background: #0038ff !important;
+      border-radius: 9999px !important;
+      box-shadow: 0 6px 18px rgba(0, 56, 255, 0.32), inset 0 1px 1px rgba(255, 255, 255, 0.5) !important;
+    }
+    body.role-viewer .cat-btn {
+      border-radius: 9999px !important;
+      transition: all 0.25s ease !important;
+    }
+    body.role-viewer .cat-btn:hover {
+      background: rgba(0, 56, 255, 0.08) !important;
+      color: #0038ff !important;
+    }
+
+    /* Pitch Deck Cover Banner (#sec-hero) with Liquid Glass & Cobalt #0038FF Typography */
+    body.role-viewer #sec-hero {
+      background:
+        radial-gradient(circle at 52% 48%, rgba(255, 255, 255, 0.98) 0%, rgba(244, 247, 253, 0.92) 55%, rgba(232, 239, 252, 0.88) 100%) !important;
+      backdrop-filter: blur(30px) saturate(180%) !important;
+      -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+      color: #0f172a !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.95) !important;
+      box-shadow:
+        0 30px 70px -20px rgba(0, 56, 255, 0.16),
+        0 10px 30px -10px rgba(15, 23, 42, 0.06),
+        inset 0 2px 3px rgba(255, 255, 255, 1),
+        inset 0 -2px 4px rgba(0, 56, 255, 0.08) !important;
+    }
+    body.role-viewer #sec-hero h1 {
+      color: #0038ff !important;
+      letter-spacing: -0.03em;
+      text-shadow: 0 12px 30px rgba(0, 56, 255, 0.12);
+    }
+    body.role-viewer #sec-hero h1 span {
+      background: linear-gradient(95deg, #0038ff 0%, #0026b3 55%, #1d4ed8 100%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+    }
+    body.role-viewer #sec-hero p {
+      color: #334155 !important;
+    }
+    body.role-viewer #sec-hero .bg-white\/10 {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.58) 100%) !important;
+      backdrop-filter: blur(20px) saturate(180%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.95) !important;
+      color: #0038ff !important;
+      box-shadow:
+        0 12px 32px -8px rgba(0, 56, 255, 0.12),
+        inset 0 1px 2px rgba(255, 255, 255, 0.95),
+        inset 0 -1px 1px rgba(0, 56, 255, 0.1) !important;
+    }
+    body.role-viewer #sec-hero .text-emerald-300,
+    body.role-viewer #sec-hero .text-emerald-400,
+    body.role-viewer #sec-hero .text-teal-300,
+    body.role-viewer #sec-hero .text-amber-300,
+    body.role-viewer #sec-hero .text-amber-400 {
+      color: #0038ff !important;
+    }
+    body.role-viewer #sec-hero .bg-emerald-500\/20 {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(224, 234, 255, 0.7) 100%) !important;
+      border: 1px solid rgba(0, 56, 255, 0.22) !important;
+      color: #0038ff !important;
+      box-shadow: 0 4px 15px rgba(0, 56, 255, 0.08), inset 0 1px 1px #ffffff !important;
+    }
+    body.role-viewer #sec-hero .from-emerald-500 {
+      background: #0038ff !important;
+      color: #ffffff !important;
+      box-shadow: 0 14px 28px -6px rgba(0, 56, 255, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.45) !important;
+    }
+    body.role-viewer #sec-hero a,
+    body.role-viewer #sec-hero .text-slate-200,
+    body.role-viewer #sec-hero .text-slate-300,
+    body.role-viewer #sec-hero .text-slate-400,
+    body.role-viewer #sec-hero h3 {
+      color: #1e293b !important;
+    }
+
+    /* Full-Website Liquid Glass Cards (.table-card) in Viewer Mode */
+    body.role-viewer .table-card {
+      position: relative;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.84) 0%, rgba(255, 255, 255, 0.66) 100%) !important;
+      backdrop-filter: blur(26px) saturate(190%) !important;
+      -webkit-backdrop-filter: blur(26px) saturate(190%) !important;
+      border-radius: 1.75rem !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.92) !important;
+      box-shadow:
+        0 24px 48px -15px rgba(0, 56, 255, 0.09),
+        0 6px 18px -6px rgba(15, 23, 42, 0.05),
+        inset 0 2px 2px rgba(255, 255, 255, 0.98),
+        inset 0 -1px 2px rgba(0, 56, 255, 0.08) !important;
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.35s ease !important;
+      overflow: hidden;
+    }
+    body.role-viewer .table-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #0038ff 0%, #60a5fa 50%, #0038ff 100%);
+      opacity: 0.9;
+    }
+    body.role-viewer .table-card:hover {
+      transform: translateY(-4px);
+      border-color: #ffffff !important;
+      box-shadow:
+        0 30px 60px -15px rgba(0, 56, 255, 0.15),
+        0 8px 22px -6px rgba(15, 23, 42, 0.06),
+        inset 0 2px 3px rgba(255, 255, 255, 1),
+        inset 0 -1px 2px rgba(0, 56, 255, 0.15) !important;
+    }
+    body.role-viewer .table-card h3 {
+      color: #0038ff !important;
+      font-weight: 800 !important;
+      letter-spacing: -0.015em;
+    }
+    body.role-viewer .table-card span.w-6.h-6,
+    body.role-viewer .table-card div.w-8.h-8 {
+      background: linear-gradient(135deg, #0038ff 0%, #1d4ed8 100%) !important;
+      color: #ffffff !important;
+      border-radius: 0.6rem !important;
+      box-shadow: 0 6px 14px rgba(0, 56, 255, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.5) !important;
+    }
+
+    /* Liquid Glass Pure Text Table Styling in Viewer Mode */
+    body.role-viewer .table-container {
+      border-radius: 1.25rem !important;
+      border: 1px solid rgba(255, 255, 255, 0.95) !important;
+      background: rgba(255, 255, 255, 0.78) !important;
+      backdrop-filter: blur(16px) !important;
+      box-shadow: 0 8px 24px -8px rgba(0, 56, 255, 0.06), inset 0 1px 2px rgba(255, 255, 255, 0.9) !important;
+    }
+    body.role-viewer .table-container .data-table {
+      width: 100% !important;
+      min-width: 640px !important;
+      table-layout: auto !important;
+    }
+    body.role-viewer .data-table th {
+      background: linear-gradient(90deg, #0038ff 0%, #1648ff 100%) !important;
+      color: #ffffff !important;
+      border-bottom: none !important;
+      font-weight: 600 !important;
+      padding: 13px 15px !important;
+    }
+    body.role-viewer .data-table td {
+      padding: 12px 15px !important;
+      border-bottom: 1px solid rgba(0, 56, 255, 0.07) !important;
+      color: #0f172a !important;
+    }
+    body.role-viewer .data-table tbody tr:nth-child(even) {
+      background-color: rgba(240, 245, 255, 0.55) !important;
+    }
+    body.role-viewer .data-table tbody tr:hover {
+      background-color: rgba(0, 56, 255, 0.05) !important;
+    }
+
+    /* ==================== 2. EDITOR MODE: GREEN DASHED CARDS + HUD FRAME ==================== */
+    body.role-editor {
+      background-color: #f0fdf4;
+      background-image:
+        linear-gradient(to right, rgba(22, 163, 74, 0.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(22, 163, 74, 0.08) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    body.role-editor .viewer-text,
+    body.role-editor #budgetTotalViewerText,
+    body.role-editor #pitchDeckLiquidBg,
+    body.role-editor #heroLiquidGlassSculpture {
+      display: none !important;
+    }
+    body.role-editor .table-card {
+      border: 2px dashed #16a34a !important;
+      background-color: #ffffff !important;
+      border-radius: 1rem !important;
+      box-shadow: 0 10px 25px -5px rgba(22, 163, 74, 0.08) !important;
+    }
+    body.role-editor .table-container .data-table {
+      width: max-content !important;
+      min-width: 100% !important;
+      max-width: none !important;
+      table-layout: auto !important;
+    }
+    body.role-editor .data-table th,
+    body.role-editor .data-table td {
+      min-width: 120px;
+    }
+    body.role-editor .data-table .cell-input,
+    body.role-editor .data-table .mini-sub-input,
+    body.role-editor .data-table td > input,
+    body.role-editor .data-table td > select {
+      min-width: 180px !important;
+      overflow-x: auto !important;
+      white-space: nowrap !important;
+    }
+    body.role-editor .data-table .cell-input[type="text"],
+    body.role-editor .data-table .mini-sub-input[type="text"] {
+      min-width: 260px !important;
+    }
+    body.role-editor .data-table .cell-input[type="number"],
+    body.role-editor .data-table .cell-input[type="date"] {
+      min-width: 115px !important;
+    }
+    body.role-editor .meta-input {
+      max-width: 100% !important;
+      overflow-x: auto !important;
+      white-space: nowrap !important;
+    }
+
+    /* ==================== PRINT OPTIMIZATION (A4 PORTRAIT) ==================== */
     @media print {
       @page { size: A4 portrait; margin: 10mm; }
-      .no-print, .editor-only-btn, .fa-trash-can { display: none !important; }
-      body { background: white !important; padding: 0 !important; }
-      .table-card { break-inside: avoid !important; page-break-inside: avoid !important; margin-bottom: 1rem !important; box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
-      .table-container { overflow: visible !important; width: 100% !important; }
-      .data-table { table-layout: auto !important; width: 100% !important; max-width: 100% !important; }
-      .data-table th, .data-table td { white-space: normal !important; word-wrap: break-word !important; padding: 0.3rem 0.25rem !important; }
-      #sec-t7 .data-table { table-layout: fixed !important; }
-      .data-table th { font-size: 0.75rem !important; }
-      .data-table td { font-size: 0.75rem !important; }
-      .cell-input { font-size: 0.75rem !important; }
-      .mini-sub-input { font-size: 0.65rem !important; white-space: normal !important; }
-    }
-
-    html, body { max-width: 100%; overflow-x: hidden; }
-    .table-container { width: 100% !important; max-width: 100% !important; overflow-x: auto !important; overflow-y: visible !important; -webkit-overflow-scrolling: touch !important; overscroll-behavior-x: contain; }
-    .table-container .data-table { width: max-content !important; min-width: 100% !important; max-width: none !important; table-layout: auto !important; }
-    .data-table th, .data-table td { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; word-break: normal !important; vertical-align: top !important; }
-    .data-table th { min-width: 120px; }
-    .data-table td { min-width: 120px; }
-    .data-table td:not(:has(input)):not(:has(select)) { max-width: 460px; }
-    .data-table .cell-input, .data-table .mini-sub-input, .data-table td > input, .data-table td > select { min-width: 220px !important; overflow-x: auto !important; white-space: nowrap !important; }
-    .data-table .cell-input[type="text"], .data-table .mini-sub-input[type="text"] { min-width: 320px !important; }
-    .data-table .cell-input[type="number"], .data-table .cell-input[type="date"] { min-width: 120px !important; }
-    .meta-input { max-width: 100% !important; overflow-x: auto !important; white-space: nowrap !important; }
-
-    @media (max-width: 768px) {
-      .table-container .data-table { min-width: max-content !important; }
-      .data-table td:not(:has(input)):not(:has(select)) { max-width: 380px !important; }
-      .data-table .cell-input[type="text"], .data-table .mini-sub-input[type="text"] { min-width: 280px !important; }
-    }
-  
-    .table-container { margin-bottom: 10px !important; padding: 0 !important; }
-    .data-table { border-spacing: 0 !important; margin: 0 !important; }
-    .data-table th, .data-table td { padding: 7px 9px !important; }
-    .data-table + .data-table { margin-top: 8px !important; }
-
-    /* Keyframes for toast pop animation */
-    @keyframes dropBounce {
-      0% { transform: translate(-50%, -100%); opacity: 0; }
-      60% { transform: translate(-50%, 10%); opacity: 1; }
-      100% { transform: translate(-50%, 0); opacity: 1; }
+      html, body {
+        background: #ffffff !important;
+        background-image: none !important;
+        color: #000000 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        overflow: visible !important;
+      }
+      .no-print,
+      .editor-only-btn,
+      .fa-trash-can,
+      .print\:hidden,
+      #editorHudFrame,
+      #pitchDeckLiquidBg,
+      #heroLiquidGlassSculpture,
+      #statusNotificationBanner,
+      .cell-input,
+      .mini-sub-input,
+      .meta-input,
+      #budgetTotalInput {
+        display: none !important;
+      }
+      .viewer-text,
+      #metaTitlePrint,
+      #metaAuthorsPrint,
+      #metaAdvisorPrint,
+      #metaSchoolPrint,
+      #budgetTotalViewerText {
+        display: block !important;
+        color: #000000 !important;
+        -webkit-text-fill-color: #000000 !important;
+        background: none !important;
+        white-space: pre-wrap !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        font-size: 0.75rem !important;
+        line-height: 1.35 !important;
+      }
+      #metaTitlePrint {
+        font-size: 1.15rem !important;
+        font-weight: 700 !important;
+      }
+      .table-card {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        margin-bottom: 1rem !important;
+        padding: 0.75rem !important;
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 0.5rem !important;
+        background: #ffffff !important;
+      }
+      .table-card::before {
+        display: none !important;
+      }
+      .table-card h3 {
+        color: #000000 !important;
+      }
+      .table-container {
+        overflow: visible !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 0 !important;
+      }
+      .data-table {
+        table-layout: fixed !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+      }
+      .data-table th, .data-table td {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: auto !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        overflow-wrap: anywhere !important;
+        padding: 0.3rem 0.25rem !important;
+        font-size: 0.72rem !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        border-bottom: 1px solid #cbd5e1 !important;
+      }
+      .data-table th {
+        background-color: #f1f5f9 !important;
+        color: #000000 !important;
+        font-weight: 700 !important;
+      }
     }
   </style>
 </head>
-<body class="role-editor">
+<body class="role-viewer">
+
+  <!-- ==================== SHARED SVG 3D SPECULAR & CAUSTICS FILTER DEFINITIONS ==================== -->
+  <svg width="0" height="0" class="fixed pointer-events-none no-print" aria-hidden="true">
+    <defs>
+      <!-- 3D Studio Specular Lighting & Glass Caustics Filter -->
+      <filter id="liquidGlass3DFilter" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blurAlpha"/>
+        <feSpecularLighting in="blurAlpha" surfaceScale="9" specularConstant="1.35" specularExponent="38" lighting-color="#ffffff" result="specOut">
+          <fePointLight x="-160" y="-220" z="320"/>
+        </feSpecularLighting>
+        <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specMasked"/>
+        <feComposite in="SourceGraphic" in2="specMasked" operator="arithmetic" k1="0" k2="1" k3="0.95" k4="0" result="litPaint"/>
+        <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.14"/>
+      </filter>
+
+      <!-- Studio Dark Chrome, Silver, Warm Champagne & Pure White Gradients (Matched to Reference Image) -->
+      <linearGradient id="studioGlassBody" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.96"/>
+        <stop offset="22%" stop-color="#f8fafc" stop-opacity="0.72"/>
+        <stop offset="45%" stop-color="#e5dec9" stop-opacity="0.48"/>
+        <stop offset="68%" stop-color="#1e293b" stop-opacity="0.75"/>
+        <stop offset="85%" stop-color="#cbd5e1" stop-opacity="0.85"/>
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0.98"/>
+      </linearGradient>
+
+      <linearGradient id="studioChromeCore" x1="15%" y1="0%" x2="85%" y2="100%">
+        <stop offset="0%" stop-color="#090d16" stop-opacity="0.88"/>
+        <stop offset="28%" stop-color="#ffffff" stop-opacity="0.95"/>
+        <stop offset="52%" stop-color="#d6c7b2" stop-opacity="0.55"/>
+        <stop offset="76%" stop-color="#0f172a" stop-opacity="0.82"/>
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0.95"/>
+      </linearGradient>
+
+      <linearGradient id="studioSpecularRim" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.98"/>
+        <stop offset="50%" stop-color="#0038ff" stop-opacity="0.22"/>
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="1"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <!-- ==================== VIEWER MODE: 3D LIQUID GLASS LEAF-RIBBON BACKGROUND (180s ROTATION, NON-OVERLAPPING) ==================== -->
+  <div id="pitchDeckLiquidBg" class="fixed inset-0 pointer-events-none z-0 overflow-hidden no-print">
+    <!-- WebGL 3D Refractive Background Canvas -->
+    <canvas id="bgLiquidWebGL" class="absolute inset-0 w-full h-full opacity-90"></canvas>
+
+    <!-- Top-Right 3D Specular Botanical Leaf-Ribbon Sculpture (180s linear infinite) -->
+    <div class="absolute -top-24 -right-24 w-[380px] sm:w-[460px] h-[380px] sm:h-[460px] opacity-75 pitch-spin-slow">
+      <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full" filter="url(#liquidGlass3DFilter)">
+        <!-- Single Clean Non-Overlapping 3D Leaf-Ribbon Contour -->
+        <path d="M250 55 C 375 65, 440 165, 410 285 C 382 395, 275 445, 175 410 C 85 378, 55 265, 95 165 C 132 72, 185 50, 250 55 Z"
+              stroke="url(#studioGlassBody)" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- Dark Chrome & Warm Champagne Internal Refraction Band -->
+        <path d="M250 55 C 375 65, 440 165, 410 285 C 382 395, 275 445, 175 410 C 85 378, 55 265, 95 165 C 132 72, 185 50, 250 55 Z"
+              stroke="url(#studioChromeCore)" stroke-width="18" stroke-linecap="round"/>
+        <!-- Razor-Sharp White Specular Glass Edge + Midrib Vein -->
+        <path d="M125 345 C 195 290, 310 195, 375 125"
+              stroke="url(#studioSpecularRim)" stroke-width="8" stroke-linecap="round" opacity="0.75"/>
+      </svg>
+    </div>
+
+    <!-- Bottom-Left 3D Specular Botanical Leaf-Ribbon Sculpture (180s linear infinite reverse) -->
+    <div class="absolute -bottom-28 -left-24 w-[360px] sm:w-[440px] h-[360px] sm:h-[440px] opacity-65 pitch-spin-reverse">
+      <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full" filter="url(#liquidGlass3DFilter)">
+        <path d="M245 65 C 360 80, 430 185, 395 300 C 360 410, 245 435, 150 385 C 65 340, 60 215, 120 130 C 165 68, 195 58, 245 65 Z"
+              stroke="url(#studioGlassBody)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M245 65 C 360 80, 430 185, 395 300 C 360 410, 245 435, 150 385 C 65 340, 60 215, 120 130 C 165 68, 195 58, 245 65 Z"
+              stroke="url(#studioChromeCore)" stroke-width="15" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ==================== EDITOR MODE: GREEN HUD FRAME OVERLAY ==================== -->
+  <div id="editorHudFrame" class="fixed inset-0 pointer-events-none z-[9000] no-print">
+    <div class="absolute inset-2 sm:inset-3 border-2 border-dashed border-emerald-500/65 rounded-2xl shadow-[inset_0_0_25px_rgba(16,185,129,0.12)]"></div>
+    <div class="absolute top-2 left-2 sm:top-3 sm:left-3 w-8 h-8 border-t-4 border-l-4 border-emerald-600 rounded-tl-xl"></div>
+    <div class="absolute top-2 right-2 sm:top-3 sm:right-3 w-8 h-8 border-t-4 border-r-4 border-emerald-600 rounded-tr-xl"></div>
+    <div class="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 w-8 h-8 border-b-4 border-l-4 border-emerald-600 rounded-bl-xl"></div>
+    <div class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 w-8 h-8 border-b-4 border-r-4 border-emerald-600 rounded-br-xl"></div>
+    <div class="absolute bottom-4 left-6 hidden sm:flex items-center gap-2 bg-emerald-950/90 text-emerald-300 px-3 py-1 rounded-md text-[10px] font-mono border border-emerald-500/40 shadow-lg">
+      <span class="w-2 h-2 rounded-full bg-emerald-400" style="animation: hudBlink 1.4s infinite;"></span>
+      <span>HUD // EDITOR MODE ACTIVE</span>
+    </div>
+    <div class="absolute bottom-4 right-6 hidden sm:flex items-center gap-2 bg-emerald-950/90 text-emerald-300 px-3 py-1 rounded-md text-[10px] font-mono border border-emerald-500/40 shadow-lg">
+      <span>13 TABLES // CLOUD SYNC READY</span>
+    </div>
+  </div>
 
   <!-- ==================== NEW FULL SCREEN LOADER ==================== -->
   <div id="globalLoader" class="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-all duration-300 opacity-0 pointer-events-none no-print">
@@ -256,7 +695,7 @@
 
         <div id="roleBadgeContainer" class="flex items-center"></div>
 
-        <button onclick="manualSaveAll()" class="px-3.5 py-1.5 rounded-lg bg-jstp-600 hover:bg-jstp-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+        <button onclick="manualSaveAll()" class="editor-only-btn px-3.5 py-1.5 rounded-lg bg-jstp-600 hover:bg-jstp-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
           <i class="fa-solid fa-cloud-arrow-up"></i> <span class="hidden sm:inline">บังคับเซฟคลาวด์</span>
         </button>
 
@@ -264,7 +703,7 @@
           <i class="fa-solid fa-print"></i>
         </button>
 
-        <button onclick="toggleBackupMenu()" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs transition" title="สำรองและกู้คืน">
+        <button onclick="toggleBackupMenu()" class="editor-only-btn p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs transition" title="สำรองและกู้คืน">
           <i class="fa-solid fa-ellipsis-vertical"></i>
         </button>
       </div>
@@ -304,22 +743,42 @@
         </button>
         <div class="h-4 w-px bg-slate-300 mx-1"></div>
         <div id="categoryTabs" class="flex gap-1">
-          <button onclick="switchCategory('cat-physical')" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">1. กายภาพ & ความแข็งแรง</button>
-          <button onclick="switchCategory('cat-water')" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">2. การอุ้มน้ำ</button>
-          <button onclick="switchCategory('cat-growth')" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">3. การเติบโตของพืช</button>
-          <button onclick="switchCategory('cat-decay')" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">4. การย่อยสลาย</button>
-          <button onclick="switchCategory('cat-summary')" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">5. สรุปผล & ต้นทุน</button>
-          <button onclick="switchCategory('cat-budget')" class="cat-btn px-2.5 py-1 rounded-md text-rose-700 hover:bg-rose-100 font-bold"><i class="fa-solid fa-coins mr-1"></i>บัญชีทุนวิจัย</button>
+          <button onclick="switchCategory('cat-physical', event)" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">1. กายภาพ & ความแข็งแรง</button>
+          <button onclick="switchCategory('cat-water', event)" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">2. การอุ้มน้ำ</button>
+          <button onclick="switchCategory('cat-growth', event)" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">3. การเติบโตของพืช</button>
+          <button onclick="switchCategory('cat-decay', event)" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">4. การย่อยสลาย</button>
+          <button onclick="switchCategory('cat-summary', event)" class="cat-btn px-2.5 py-1 rounded-md text-slate-600 hover:bg-slate-200">5. สรุปผล & ต้นทุน</button>
+          <button onclick="switchCategory('cat-budget', event)" class="cat-btn px-2.5 py-1 rounded-md text-rose-700 hover:bg-rose-100 font-bold"><i class="fa-solid fa-coins mr-1"></i>บัญชีทุนวิจัย</button>
         </div>
       </div>
     </div>
   </header>
 
   <!-- ==================== HERO / COVER LANDING BANNER ==================== -->
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 no-print">
+  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-6 no-print">
     <section id="sec-hero" class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 text-white rounded-3xl shadow-xl p-6 sm:p-10 border border-emerald-800/40">
       <div class="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-teal-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- 3D WebGL + Specular SVG Liquid Glass Leaf-Ribbon Sculpture inside Hero (180s linear infinite) -->
+      <div id="heroLiquidGlassSculpture" class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[360px] sm:w-[520px] h-[360px] sm:h-[520px] pointer-events-none flex items-center justify-center">
+        <!-- Real-Time 3D WebGL Refractive Canvas -->
+        <canvas id="heroLiquidWebGL" class="absolute inset-0 w-full h-full"></canvas>
+        <!-- High-Definition SVG 3D Specular & Caustics Overlay (180s linear infinite) -->
+        <div class="w-full h-full pitch-spin-slow opacity-80">
+          <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full" filter="url(#liquidGlass3DFilter)">
+            <!-- Molded 3D Botanical Leaf-Ribbon Loop (Matches Reference Pitch Deck Sculpture) -->
+            <path d="M165 95 C 275 40, 425 110, 415 245 C 405 375, 270 445, 155 395 C 55 350, 65 205, 165 150 C 255 100, 345 165, 325 265 C 308 350, 205 365, 145 305 C 90 250, 85 135, 165 95 Z"
+                  stroke="url(#studioGlassBody)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- Dark Chrome & Champagne Studio Reflection Band -->
+            <path d="M165 95 C 275 40, 425 110, 415 245 C 405 375, 270 445, 155 395 C 55 350, 65 205, 165 150"
+                  stroke="url(#studioChromeCore)" stroke-width="18" stroke-linecap="round"/>
+            <!-- Crisp White Specular Highlight Rim -->
+            <path d="M165 95 C 275 40, 425 110, 415 245 C 405 375, 270 445, 155 395"
+                  stroke="url(#studioSpecularRim)" stroke-width="6" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
 
       <div class="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
         <div class="w-full lg:w-7/12 space-y-5 text-center lg:text-left">
@@ -413,7 +872,7 @@
     </section>
   </div>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+  <main class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
     <!-- Project Information Card -->
     <section id="sec-meta" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm relative overflow-hidden table-card">
@@ -614,6 +1073,7 @@
         <div class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
           <span class="text-xs font-prompt font-semibold text-slate-600">งบที่ได้รับ:</span>
           <input type="number" id="budgetTotalInput" onchange="updateBudgetTotal(this.value)" class="w-28 text-right font-mono font-bold text-sm bg-white border border-slate-300 rounded px-2 py-1 text-rose-700 focus:outline-none focus:ring-1 focus:ring-rose-500" value="15000">
+          <span id="budgetTotalViewerText" class="hidden font-mono font-bold text-sm text-blue-700 px-1">15,000.00</span>
           <span class="text-xs text-slate-500 font-prompt">บาท</span>
         </div>
       </div>
@@ -681,7 +1141,12 @@
     <div class="relative max-w-2xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl p-4" onclick="event.stopPropagation()">
       <div class="flex justify-between items-center mb-3">
         <h4 class="font-bold font-prompt text-slate-800 text-sm" id="lightboxTitle">หลักฐานการชำระเงิน</h4>
-        <button onclick="closeReceiptLightbox()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+        <div class="flex items-center gap-2">
+          <a id="lightboxTempLink" href="#" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-prompt font-semibold inline-flex items-center gap-1">
+            <i class="fa-solid fa-up-right-from-square"></i> เปิดลิงก์ชั่วคราว
+          </a>
+          <button onclick="closeReceiptLightbox()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
       </div>
       <div class="max-h-[80vh] overflow-auto flex items-center justify-center bg-slate-100 rounded-xl p-2">
         <img id="lightboxImage" src="" alt="สลิป" class="max-w-full max-h-[70vh] rounded-lg object-contain">
@@ -730,6 +1195,7 @@
     const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
     let syncTimeout = null;
     let isSyncing = false;
+    let activeBlobUrl = null;
 
     const DEFAULT_JSTP_DATA = {
       meta: { title: "การศึกษาและพัฒนาประสิทธิภาพกระถางเพาะชำย่อยสลายได้ทางชีวภาพจากวัสดุธรรมชาติ", authors: "นักเรียนผู้จัดทำโครงงาน JSTP", advisor: "อาจารย์ที่ปรึกษาโครงงานวิทยาศาสตร์", school: "โครงการพัฒนาอัจฉริยภาพทางวิทยาศาสตร์และเทคโนโลยีสำหรับเด็กและเยาวชน (JSTP)" },
@@ -739,7 +1205,8 @@
     };
 
     let appData = {};
-    let isEditorRole = localStorage.getItem('jstp_logged_in') === 'true'; 
+    let isAuthenticated = localStorage.getItem('jstp_logged_in') === 'true';
+    let isEditorRole = isAuthenticated; 
     let currentViewMode = 'all'; 
     let pendingConfirmAction = null;
     let chartWaterInstance = null;
@@ -747,11 +1214,195 @@
     window.addEventListener('DOMContentLoaded', () => {
       setupDateInputs();
       updateRoleUI();
+      initLiquidGlass3DEngine();
       loadDataFromCloud().then(() => {
         autoGenerateExpenseCode();
         autoGenerateT7Round();
       });
     });
+
+    // ==================== 3D WEBGL LIQUID GLASS & CHROME ENGINE (THREE.JS) ====================
+    function createStudioEnvironmentMap() {
+      const cvs = document.createElement('canvas');
+      cvs.width = 1024;
+      cvs.height = 512;
+      const ctx = cvs.getContext('2d');
+
+      // Base studio bright white & silver backdrop
+      const grad = ctx.createLinearGradient(0, 0, 0, 512);
+      grad.addColorStop(0.0, '#ffffff');
+      grad.addColorStop(0.22, '#f1f5f9');
+      grad.addColorStop(0.45, '#090d16'); // High-contrast dark chrome studio reflection band
+      grad.addColorStop(0.55, '#1e293b');
+      grad.addColorStop(0.72, '#ebdcc7'); // Warm champagne refraction tint from reference image
+      grad.addColorStop(0.88, '#e2e8f0');
+      grad.addColorStop(1.0, '#ffffff');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1024, 512);
+
+      // Sharp studio softbox specular strips & subtle cobalt accent
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(80, 40, 320, 75);
+      ctx.fillRect(620, 360, 280, 80);
+
+      ctx.fillStyle = 'rgba(0, 56, 255, 0.25)';
+      ctx.beginPath();
+      ctx.arc(512, 256, 110, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#050811';
+      ctx.fillRect(380, 140, 180, 50);
+
+      const texture = new THREE.CanvasTexture(cvs);
+      texture.mapping = THREE.EquirectangularReflectionMapping;
+      return texture;
+    }
+
+    function createBotanicalLeafRibbonGeometry(scale = 1.0) {
+      // Smooth non-overlapping 3D Botanical Leaf-Ribbon closed curve
+      const points = [];
+      const segments = 160;
+      for (let i = 0; i < segments; i++) {
+        const t = (i / segments) * Math.PI * 2;
+        // Graceful asymmetrical leaf-loop contour with 3D depth wave (no self-intersection)
+        const r = 1.35 + 0.35 * Math.sin(t) - 0.18 * Math.cos(2 * t);
+        const x = Math.cos(t) * r * scale;
+        const y = Math.sin(t) * (r * 0.88) * scale;
+        const z = (0.42 * Math.sin(2 * t) + 0.18 * Math.cos(t)) * scale;
+        points.push(new THREE.Vector3(x, y, z));
+      }
+      const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal');
+      const geo = new THREE.TubeGeometry(curve, 180, 0.26 * scale, 48, true);
+
+      // Sculpt radius along the loop so it swells like an organic leaf blade & tapers smoothly
+      const pos = geo.attributes.position;
+      const center = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        const u = Math.floor(i / 49) / 180;
+        curve.getPointAt(u % 1, center);
+        const vx = pos.getX(i) - center.x;
+        const vy = pos.getY(i) - center.y;
+        const vz = pos.getZ(i) - center.z;
+        const leafProfile = 0.55 + 0.65 * Math.sin(u * Math.PI);
+        pos.setXYZ(
+          i,
+          center.x + vx * leafProfile,
+          center.y + vy * leafProfile,
+          center.z + vz * (0.75 + 0.25 * Math.cos(u * Math.PI * 2))
+        );
+      }
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    function initLiquidGlass3DEngine() {
+      if (typeof THREE === 'undefined') return;
+      try {
+        const envMap = createStudioEnvironmentMap();
+
+        const glassMaterial = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color('#ffffff'),
+          metalness: 0.18,
+          roughness: 0.03,
+          transmission: 0.92,
+          transparent: true,
+          opacity: 0.96,
+          ior: 1.52,
+          reflectivity: 1.0,
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.02,
+          envMap: envMap,
+          envMapIntensity: 2.35,
+          side: THREE.DoubleSide
+        });
+
+        // 1. Hero Banner 3D Sculpture
+        const heroCanvas = document.getElementById('heroLiquidWebGL');
+        let heroRenderer, heroScene, heroCamera, heroMesh;
+        if (heroCanvas) {
+          heroRenderer = new THREE.WebGLRenderer({ canvas: heroCanvas, alpha: true, antialias: true });
+          heroRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          heroRenderer.setSize(520, 520, false);
+
+          heroScene = new THREE.Scene();
+          heroCamera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+          heroCamera.position.set(0, 0, 5.2);
+
+          const amb = new THREE.AmbientLight(0xffffff, 1.2);
+          const dir1 = new THREE.DirectionalLight(0xffffff, 2.2);
+          dir1.position.set(4, 6, 5);
+          const dir2 = new THREE.DirectionalLight(0x0038ff, 0.9);
+          dir2.position.set(-5, -4, 3);
+          heroScene.add(amb, dir1, dir2);
+
+          heroMesh = new THREE.Mesh(createBotanicalLeafRibbonGeometry(1.05), glassMaterial);
+          heroMesh.rotation.x = 0.35;
+          heroMesh.rotation.y = -0.25;
+          heroScene.add(heroMesh);
+        }
+
+        // 2. Slide Background 3D Sculptures (Non-Overlapping Top-Right & Bottom-Left)
+        const bgCanvas = document.getElementById('bgLiquidWebGL');
+        let bgRenderer, bgScene, bgCamera, bgMeshTR, bgMeshBL;
+        if (bgCanvas) {
+          bgRenderer = new THREE.WebGLRenderer({ canvas: bgCanvas, alpha: true, antialias: true });
+          bgRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+          bgRenderer.setSize(window.innerWidth, window.innerHeight, false);
+
+          bgScene = new THREE.Scene();
+          bgCamera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+          bgCamera.position.set(0, 0, 8);
+
+          const ambBg = new THREE.AmbientLight(0xffffff, 1.2);
+          const dirBg = new THREE.DirectionalLight(0xffffff, 1.8);
+          dirBg.position.set(5, 5, 6);
+          bgScene.add(ambBg, dirBg);
+
+          const leafGeo = createBotanicalLeafRibbonGeometry(0.95);
+          bgMeshTR = new THREE.Mesh(leafGeo, glassMaterial);
+          bgMeshTR.position.set(3.6, 2.1, -1.5);
+          bgMeshTR.rotation.set(0.4, 0.2, 0.1);
+
+          bgMeshBL = new THREE.Mesh(leafGeo, glassMaterial);
+          bgMeshBL.position.set(-3.6, -2.1, -1.8);
+          bgMeshBL.rotation.set(-0.3, -0.4, 0.5);
+
+          bgScene.add(bgMeshTR, bgMeshBL);
+
+          window.addEventListener('resize', () => {
+            if (!bgRenderer || !bgCamera) return;
+            bgCamera.aspect = window.innerWidth / window.innerHeight;
+            bgCamera.updateProjectionMatrix();
+            bgRenderer.setSize(window.innerWidth, window.innerHeight, false);
+          });
+        }
+
+        // 180s full rotation angular velocity: (2 * Math.PI) / 180 rad/sec
+        const angularSpeed = (Math.PI * 2) / 180;
+        const clock = new THREE.Clock();
+
+        function animate3D() {
+          requestAnimationFrame(animate3D);
+          if (isEditorRole) return; // Pause 3D rendering in Editor Mode for crisp performance
+          const elapsed = clock.getElapsedTime();
+          const angle = elapsed * angularSpeed;
+
+          if (heroMesh && heroRenderer) {
+            heroMesh.rotation.z = angle;
+            heroMesh.rotation.y = -0.25 + Math.sin(angle * 2) * 0.18;
+            heroRenderer.render(heroScene, heroCamera);
+          }
+          if (bgMeshTR && bgMeshBL && bgRenderer) {
+            bgMeshTR.rotation.z = angle;
+            bgMeshBL.rotation.z = -angle;
+            bgRenderer.render(bgScene, bgCamera);
+          }
+        }
+        animate3D();
+      } catch (e) {
+        console.warn("WebGL fallback to SVG Specular Layer:", e);
+      }
+    }
 
     // --- LOADER LOGIC ---
     function showLoader(title = "กำลังโหลดข้อมูล", desc = "กรุณารอสักครู่...") {
@@ -759,7 +1410,7 @@
       document.getElementById('loaderDesc').innerText = desc;
       const loader = document.getElementById('globalLoader');
       const card = document.getElementById('loaderCard');
-      loader.classList.remove('hidden');
+      loader.classList.remove('hidden', 'pointer-events-none');
       setTimeout(() => {
         loader.classList.remove('opacity-0');
         card.classList.remove('scale-90');
@@ -770,7 +1421,7 @@
     function hideLoader() {
       const loader = document.getElementById('globalLoader');
       const card = document.getElementById('loaderCard');
-      loader.classList.add('opacity-0');
+      loader.classList.add('opacity-0', 'pointer-events-none');
       card.classList.remove('scale-100');
       card.classList.add('scale-90');
       setTimeout(() => { loader.classList.add('hidden'); }, 300);
@@ -818,7 +1469,6 @@
       if(statusEl) statusEl.innerHTML = `<i class="fa-solid fa-cloud-arrow-up text-amber-500"></i> รอซิงค์ขึ้นคลาวด์...`;
       
       if (syncTimeout) clearTimeout(syncTimeout);
-      // Auto-save happens silently (no overlay) but drops a nice toast when done
       syncTimeout = setTimeout(() => { saveToCloud(true, false); }, 2000); 
     }
 
@@ -826,7 +1476,7 @@
       if (!isEditorRole) return;
       if (syncTimeout) clearTimeout(syncTimeout);
       showLoader('กำลังบันทึกข้อมูล', 'อัปโหลดขึ้นคลาวด์เพื่อความปลอดภัย...');
-      saveToCloud(true, true); // true = show toast, true = hide loader when done
+      saveToCloud(true, true);
     }
 
     async function saveToCloud(notify, isManual = false) {
@@ -861,7 +1511,6 @@
       }
     }
 
-    // General app scripts...
     function setupDateInputs() {
       const today = new Date().toISOString().split('T')[0];
       const newExpDateEl = document.getElementById('newExpDate');
@@ -887,20 +1536,43 @@
       const u = document.getElementById('loginUsername').value.trim();
       const p = document.getElementById('loginPassword').value.trim();
       if (u === 'Thinnapat' && p === 'tk@26') {
+        isAuthenticated = true;
         isEditorRole = true;
         localStorage.setItem('jstp_logged_in', 'true');
         closeLoginModal();
         updateRoleUI();
+        renderWaterChart();
         showToast("ปลดล็อกโหมดแก้ไขเรียบร้อย", "success", "เข้าสู่ระบบสำเร็จ");
       } else {
         document.getElementById('loginErrorMsg').classList.remove('hidden');
       }
     }
 
+    function toggleRoleMode() {
+      if (!isAuthenticated) {
+        showLoginModal();
+        return;
+      }
+      isEditorRole = !isEditorRole;
+      updateRoleUI();
+      renderAllTables();
+      renderBudgetSection();
+      renderWaterChart();
+      if (isEditorRole) {
+        showToast("เปิดกรอบ HUD และช่องแก้ไขข้อมูลแล้ว", "success", "โหมดแก้ไข");
+      } else {
+        showToast("แสดงตารางตัวหนังสือล้วนแบบ Pitch Deck", "info", "โหมดผู้เข้าชม");
+      }
+    }
+
     function logout() {
+      isAuthenticated = false;
       isEditorRole = false;
       localStorage.setItem('jstp_logged_in', 'false');
       updateRoleUI();
+      renderAllTables();
+      renderBudgetSection();
+      renderWaterChart();
       showToast("กลับสู่โหมดดูอย่างเดียว", "info", "ออกจากระบบ");
     }
 
@@ -918,20 +1590,32 @@
       const fields = document.querySelectorAll('.cell-input, .mini-sub-input, .meta-input');
       
       if (isEditorRole) {
-        fields.forEach(el => { if (el.tagName === 'SELECT') el.disabled = false; else el.readOnly = false; });
+        fields.forEach(el => { if (el.tagName === 'SELECT') el.disabled = false; else { el.readOnly = false; el.removeAttribute('readonly'); } });
         body.classList.remove('role-viewer'); body.classList.add('role-editor');
         badgeContainer.innerHTML = `
           <div class="flex items-center gap-2">
+            <button onclick="toggleRoleMode()" class="px-3 py-1.5 rounded-lg bg-[#0038ff] hover:bg-blue-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition" title="สลับดูหน้าเว็บแบบผู้เข้าชม">
+              <i class="fa-solid fa-eye"></i> <span>สลับโหมดผู้เข้าชม</span>
+            </button>
             <span class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-800 font-prompt text-[11px] font-bold shadow-sm"><i class="fa-solid fa-user-check"></i> Thinnapat</span>
             <button onclick="logout()" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 font-prompt text-xs font-semibold shadow-sm transition">ออกจากระบบ</button>
           </div>`;
         if(statusText) statusText.innerHTML = `<i class="fa-solid fa-cloud text-blue-600 mr-1"></i> โหมดออนไลน์: ข้อมูลจะถูกบันทึกขึ้นคลาวด์อัตโนมัติเมื่อหยุดพิมพ์`;
       } else {
-        fields.forEach(el => { if (el.tagName === 'SELECT') el.disabled = true; else el.readOnly = true; });
+        fields.forEach(el => { if (el.tagName === 'SELECT') el.disabled = true; else { el.readOnly = true; el.setAttribute('readonly', 'readonly'); } });
         body.classList.remove('role-editor'); body.classList.add('role-viewer');
-        badgeContainer.innerHTML = `
-          <button onclick="showLoginModal()" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition"><i class="fa-solid fa-lock"></i> <span>เข้าสู่ระบบแก้ไข</span></button>`;
-        if(statusText) statusText.innerHTML = `<i class="fa-solid fa-eye text-amber-600 mr-1"></i> โหมดผู้เข้าชม: ข้อมูลถูกล็อกให้อ่านได้อย่างเดียว กรุณาเข้าสู่ระบบเพื่อแก้ไข`;
+        if (isAuthenticated) {
+          badgeContainer.innerHTML = `
+            <div class="flex items-center gap-2">
+              <button onclick="toggleRoleMode()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-prompt text-xs font-semibold shadow-sm flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-pen-to-square"></i> <span>สลับโหมดแก้ไข</span>
+              </button>
+              <button onclick="logout()" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 font-prompt text-xs font-semibold shadow-sm transition">ออกจากระบบ</button>
+            </div>`;
+        } else {
+          badgeContainer.innerHTML = `
+            <button onclick="showLoginModal()" class="px-3.5 py-1.5 rounded-full bg-[#0038ff] hover:bg-blue-700 text-white font-prompt text-xs font-semibold shadow-md flex items-center gap-1.5 transition"><i class="fa-solid fa-lock"></i> <span>เข้าสู่ระบบแก้ไข</span></button>`;
+        }
         enforceViewerLock();
       }
     }
@@ -939,8 +1623,6 @@
     document.addEventListener('beforeinput', function(e) { if (!isEditorRole && e.target.closest('.cell-input, .mini-sub-input, .meta-input')) e.preventDefault(); }, true);
     document.addEventListener('input', function(e) { if (!isEditorRole && e.target.closest('.cell-input, .mini-sub-input, .meta-input')) { e.preventDefault(); enforceViewerLock(); } }, true);
     document.addEventListener('change', function(e) { if (!isEditorRole && e.target.closest('.cell-input, .mini-sub-input, .meta-input')) enforceViewerLock(); }, true);
-    const viewerLockObserver = new MutationObserver(() => { if (!isEditorRole) enforceViewerLock(); });
-    viewerLockObserver.observe(document.body, { childList: true, subtree: true });
 
     function setViewMode(mode) {
       currentViewMode = mode;
@@ -952,7 +1634,7 @@
         btnAll.className = 'px-3 py-1.5 rounded-lg bg-jstp-700 text-white font-semibold flex items-center gap-1.5 shadow-sm';
         btnCat.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-200 font-semibold flex items-center gap-1.5';
         allCards.forEach(b => b.classList.remove('hidden'));
-        document.querySelectorAll('.cat-btn').forEach(btn => { btn.classList.remove('bg-slate-800', 'text-white'); btn.classList.add('text-slate-600'); });
+        document.querySelectorAll('.cat-btn').forEach(btn => { btn.classList.remove('bg-[#0038ff]', 'bg-slate-800', 'text-white'); btn.classList.add('text-slate-600'); });
       } else {
         btnCat.className = 'px-3 py-1.5 rounded-lg bg-jstp-700 text-white font-semibold flex items-center gap-1.5 shadow-sm';
         btnAll.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-200 font-semibold flex items-center gap-1.5';
@@ -968,10 +1650,10 @@
       }
       document.querySelectorAll('.table-card:not(#sec-meta)').forEach(b => b.classList.add('hidden'));
       document.querySelectorAll('.' + catId).forEach(b => b.classList.remove('hidden'));
-      document.querySelectorAll('.cat-btn').forEach(btn => { btn.classList.remove('bg-slate-800', 'text-white'); btn.classList.add('text-slate-600'); });
+      document.querySelectorAll('.cat-btn').forEach(btn => { btn.classList.remove('bg-[#0038ff]', 'bg-slate-800', 'text-white'); btn.classList.add('text-slate-600'); });
       
       const targetBtn = (evt && evt.currentTarget) ? evt.currentTarget : document.querySelector(`.cat-btn[onclick*="${catId}"]`);
-      if (targetBtn) { targetBtn.classList.add('bg-slate-800', 'text-white'); targetBtn.classList.remove('text-slate-600'); }
+      if (targetBtn) { targetBtn.classList.add('bg-[#0038ff]', 'text-white'); targetBtn.classList.remove('text-slate-600'); }
       if (catId === 'cat-water') setTimeout(renderWaterChart, 100);
     }
 
@@ -979,21 +1661,24 @@
       if (!secId) return;
       if (currentViewMode === 'category') setViewMode('all');
       const target = document.getElementById(secId);
-      if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); target.classList.add('ring-2', 'ring-jstp-500'); setTimeout(() => target.classList.remove('ring-2', 'ring-jstp-500'), 1500); }
+      if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); target.classList.add('ring-2', 'ring-blue-500'); setTimeout(() => target.classList.remove('ring-2', 'ring-blue-500'), 1500); }
       document.getElementById('quickJumpSelect').value = '';
     }
 
-    function updateCellData(tableName, rowId, field, value, isNumeric = false) {
+    function updateCellData(tableName, rowId, field, value, isNumeric = false, inputEl = null) {
       const list = appData[tableName];
       if (!list) return;
       const row = list.find(r => r.id === rowId);
       if (row) {
         row[field] = isNumeric ? (value === '' ? 0 : Number(value)) : value;
+        if (inputEl && inputEl.nextElementSibling && inputEl.nextElementSibling.classList.contains('viewer-text')) {
+          inputEl.nextElementSibling.textContent = (value !== '' && value !== null && value !== undefined) ? value : '-';
+        }
         if (tableName === 't3') {
           const avg = Number(((Number(row.p1)||0) + (Number(row.p3)||0) + (Number(row.p6)||0)) / 3).toFixed(2);
           row.avg = Number(avg);
           const avgCell = document.getElementById(`t3_avg_${rowId}`);
-          if (avgCell) avgCell.innerText = `${row.avg}%`;
+          if (avgCell) avgCell.innerText = `${row.avg.toFixed(2)}%`;
           renderWaterChart();
         } else if (tableName === 't6') {
           row.rate = Number((((Number(row.germinated)||0) / (Number(row.planted)||1)) * 100).toFixed(1));
@@ -1008,19 +1693,27 @@
       }
     }
 
-    function updateT7Field(rowId, formulaKey, fieldName, value, isNumeric = false) {
+    function updateT7Field(rowId, formulaKey, fieldName, value, isNumeric = false, inputEl = null) {
       const row = appData.t7.find(r => r.id === rowId);
       if (row) {
         if (!row[formulaKey]) row[formulaKey] = {};
         row[formulaKey][fieldName] = isNumeric ? (value === '' ? '' : Number(value)) : value;
+        if (inputEl && inputEl.nextElementSibling && inputEl.nextElementSibling.classList.contains('viewer-text')) {
+          inputEl.nextElementSibling.textContent = (value !== '' && value !== null && value !== undefined) ? value : '-';
+        }
         saveToStorage();
       }
     }
 
-    function updateExpenseField(expId, field, value, isNumeric = false) {
+    function updateExpenseField(expId, field, value, isNumeric = false, inputEl = null) {
       const exp = appData.expenses.find(e => e.id === expId);
       if (exp) {
         exp[field] = isNumeric ? (value === '' ? 0 : Number(value)) : value;
+        if (inputEl && inputEl.nextElementSibling && inputEl.nextElementSibling.classList.contains('viewer-text')) {
+          if (field === 'date') inputEl.nextElementSibling.textContent = formatThaiDate(value);
+          else if (field === 'price') inputEl.nextElementSibling.textContent = `฿${Number(value||0).toFixed(2)}`;
+          else inputEl.nextElementSibling.textContent = value || '-';
+        }
         if (field === 'qty' || field === 'price') {
           exp.total = Number(((Number(exp.qty) || 0) * (Number(exp.price) || 0)).toFixed(2));
           const totalEl = document.getElementById(`exp_total_${expId}`);
@@ -1032,7 +1725,7 @@
     }
 
     function updateBudgetStatsOnly() {
-      const totalBudget = appData.budgetTotal || 15000;
+      const totalBudget = Number(appData.budgetTotal) || 15000;
       const spent = (appData.expenses||[]).reduce((sum, e) => sum + (Number(e.total) || 0), 0);
       const remain = totalBudget - spent;
       const percent = totalBudget > 0 ? ((spent / totalBudget) * 100).toFixed(1) : 0;
@@ -1040,6 +1733,8 @@
       document.getElementById('statBudgetSpent').innerText = `฿${spent.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
       document.getElementById('statBudgetRemain').innerText = `฿${remain.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
       document.getElementById('statBudgetPercent').innerText = `${percent}%`;
+      const viewerBudgetEl = document.getElementById('budgetTotalViewerText');
+      if (viewerBudgetEl) viewerBudgetEl.innerText = totalBudget.toLocaleString('th-TH', { minimumFractionDigits: 2 });
     }
 
     function confirmDeleteRow(tableName, rowId) {
@@ -1049,7 +1744,7 @@
     function deleteRowImmediate(tableName, rowId) {
       if (appData[tableName]) {
         appData[tableName] = appData[tableName].filter(r => r.id !== rowId);
-        manualSaveAll(); // Force manual save on delete
+        manualSaveAll();
         renderTableByName(tableName);
         if (tableName === 't3') renderWaterChart();
         if (tableName === 't7') autoGenerateT7Round();
@@ -1059,17 +1754,11 @@
     function printReport() {
       const pairs = [['metaTitle', 'metaTitlePrint'], ['metaAuthors', 'metaAuthorsPrint'], ['metaAdvisor', 'metaAdvisorPrint'], ['metaSchool', 'metaSchoolPrint']];
       pairs.forEach(([src, dst]) => { const a = document.getElementById(src); const b = document.getElementById(dst); if (a && b) b.textContent = a.value || ''; });
-      const replacements = [];
-      document.querySelectorAll('input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select').forEach(el => {
-        if (el.type === 'hidden' || el.closest('.no-print') || el.closest('.editor-only-btn')) return;
-        let value = el.tagName === 'SELECT' ? (el.options[el.selectedIndex]?.text || '') : el.type === 'file' ? (el.files?.[0]?.name || '') : (el.value ?? '');
-        const block = document.createElement('div'); block.className = 'print-full-value'; block.textContent = value;
-        block.setAttribute('data-print-original-display', el.style.display || '');
-        el.style.display = 'none'; el.parentNode.insertBefore(block, el); replacements.push({ el, block });
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          try { window.focus(); window.print(); } catch (err) { alert('ไม่สามารถพิมพ์ได้'); }
+        }, 150);
       });
-      const restore = () => { replacements.forEach(({el, block}) => { el.style.display = block.getAttribute('data-print-original-display') || ''; block.remove(); }); window.removeEventListener('afterprint', restore); };
-      window.addEventListener('afterprint', restore);
-      requestAnimationFrame(() => { setTimeout(() => { try { window.focus(); window.print(); } catch (err) { restore(); alert('ไม่สามารถพิมพ์ได้'); } }, 150); });
     }
 
     function updateMeta(field, val) {
@@ -1102,7 +1791,15 @@
       if (r[name]) r[name]();
     }
 
-    const makeInput = (tbl, id, field, val, type = 'text', cls = '') => { const step = type === 'number' ? 'step="any"' : ''; return `<input type="${type}" ${step} value="${val ?? ''}" oninput="updateCellData('${tbl}', '${id}', '${field}', this.value, ${type === 'number'})" class="cell-input ${cls}">`; };
+    // Dual-Mode Cell Renderer: Input for Editor Mode + Pure Text for Viewer Mode & Print
+    const makeInput = (tbl, id, field, val, type = 'text', cls = '') => {
+      const step = type === 'number' ? 'step="any"' : '';
+      const displayVal = (val !== '' && val !== null && val !== undefined) ? val : '-';
+      return `
+        <input type="${type}" ${step} value="${val ?? ''}" oninput="updateCellData('${tbl}', '${id}', '${field}', this.value, ${type === 'number'}, this)" class="cell-input ${cls}">
+        <div class="viewer-text ${cls}">${displayVal}</div>
+      `;
+    };
     const makeDeleteBtn = (tbl, id) => `<td class="text-center editor-only-btn print:hidden"><button onclick="confirmDeleteRow('${tbl}', '${id}')" class="text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash-can"></i></button></td>`;
 
     function renderTableT1() { document.getElementById('tbodyT1').innerHTML = appData.t1.map(r => `<tr><td>${makeInput('t1', r.id, 'formula', r.formula, 'text', 'font-bold text-slate-800')}</td><td>${makeInput('t1', r.id, 'color', r.color)}</td><td>${makeInput('t1', r.id, 'thickness', r.thickness, 'number', 'text-center')}</td><td>${makeInput('t1', r.id, 'weight', r.weight, 'number', 'text-center')}</td><td>${makeInput('t1', r.id, 'surface', r.surface)}</td><td>${makeInput('t1', r.id, 'strength', r.strength)}</td>${makeDeleteBtn('t1', r.id)}</tr>`).join(''); }
@@ -1111,7 +1808,7 @@
     function renderTableT2() { document.getElementById('tbodyT2').innerHTML = appData.t2.map(r => `<tr><td>${makeInput('t2', r.id, 'formula', r.formula, 'text', 'font-bold text-slate-800')}</td><td>${makeInput('t2', r.id, 'initWeight', r.initWeight, 'number', 'text-center font-bold')}</td><td>${makeInput('t2', r.id, 'h1', r.h1, 'number', 'text-center')}</td><td>${makeInput('t2', r.id, 'h3', r.h3, 'number', 'text-center')}</td><td>${makeInput('t2', r.id, 'h6', r.h6, 'number', 'text-center')}</td>${makeDeleteBtn('t2', r.id)}</tr>`).join(''); }
     function addRowT2() { appData.t2.push({ id: 't2_'+Date.now(), formula: `สูตรที่ ${appData.t2.length + 1}`, initWeight: 200, h1: 150, h3: 120, h6: 90 }); renderTableT2(); saveToStorage(); }
 
-    function renderTableT3() { document.getElementById('tbodyT3').innerHTML = appData.t3.map(r => `<tr><td>${makeInput('t3', r.id, 'formula', r.formula, 'text', 'font-bold text-slate-800')}</td><td>${makeInput('t3', r.id, 'p1', r.p1, 'number', 'text-center')}</td><td>${makeInput('t3', r.id, 'p3', r.p3, 'number', 'text-center')}</td><td>${makeInput('t3', r.id, 'p6', r.p6, 'number', 'text-center')}</td><td id="t3_avg_${r.id}" class="text-center font-bold font-mono text-blue-700 bg-blue-50/50">${(r.avg||0).toFixed(2)}%</td>${makeDeleteBtn('t3', r.id)}</tr>`).join(''); }
+    function renderTableT3() { document.getElementById('tbodyT3').innerHTML = appData.t3.map(r => `<tr><td>${makeInput('t3', r.id, 'formula', r.formula, 'text', 'font-bold text-slate-800')}</td><td>${makeInput('t3', r.id, 'p1', r.p1, 'number', 'text-center')}</td><td>${makeInput('t3', r.id, 'p3', r.p3, 'number', 'text-center')}</td><td>${makeInput('t3', r.id, 'p6', r.p6, 'number', 'text-center')}</td><td id="t3_avg_${r.id}" class="text-center font-bold font-mono text-blue-700 bg-blue-50/50">${Number(r.avg||0).toFixed(2)}%</td>${makeDeleteBtn('t3', r.id)}</tr>`).join(''); }
     function addRowT3() { appData.t3.push({ id: 't3_'+Date.now(), formula: `สูตรที่ ${appData.t3.length + 1}`, p1: 70, p3: 60, p6: 50, avg: 60 }); renderTableT3(); renderWaterChart(); saveToStorage(); }
     function calculateTable3FromTable2() {
       if (!appData.t2 || appData.t2.length === 0) return showAlertModal("ไม่พบข้อมูล", "กรอกตาราง 2 ก่อนคำนวณ");
@@ -1132,7 +1829,44 @@
       const tbody = document.getElementById('tbodyT7');
       if (!appData.t7 || appData.t7.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 text-xs">ไม่มีข้อมูล</td></tr>`; return; }
       tbody.innerHTML = appData.t7.map(r => {
-        const m = (k, l) => `<div class="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1"><div class="font-bold text-[11px] text-emerald-800 border-b pb-0.5 mb-1">${l}</div><div class="grid grid-cols-2 gap-1"><div><span class="text-[10px] text-slate-400 block">สูง(ซม.):</span><input type="number" step="any" value="${r[k]?.height??''}" oninput="updateT7Field('${r.id}', '${k}', 'height', this.value, true)" class="mini-sub-input text-center"></div><div><span class="text-[10px] text-slate-400 block">ใบ:</span><input type="number" value="${r[k]?.leaves??''}" oninput="updateT7Field('${r.id}', '${k}', 'leaves', this.value, true)" class="mini-sub-input text-center"></div></div><div><span class="text-[10px] text-slate-400 block">สี:</span><input type="text" value="${r[k]?.color??''}" oninput="updateT7Field('${r.id}', '${k}', 'color', this.value)" class="mini-sub-input"></div><div><span class="text-[10px] text-slate-400 block">สมบูรณ์:</span><input type="text" value="${r[k]?.health??''}" oninput="updateT7Field('${r.id}', '${k}', 'health', this.value)" class="mini-sub-input"></div><div><span class="text-[10px] text-slate-400 block">ชื้น(%):</span><input type="number" step="any" value="${r[k]?.moisture??''}" oninput="updateT7Field('${r.id}', '${k}', 'moisture', this.value, true)" class="mini-sub-input text-center"></div></div>`;
+        const m = (k, l) => {
+          const hVal = (r[k]?.height ?? '') !== '' ? r[k].height : '-';
+          const lVal = (r[k]?.leaves ?? '') !== '' ? r[k].leaves : '-';
+          const cVal = (r[k]?.color ?? '') !== '' ? r[k].color : '-';
+          const hlVal = (r[k]?.health ?? '') !== '' ? r[k].health : '-';
+          const msVal = (r[k]?.moisture ?? '') !== '' ? r[k].moisture : '-';
+          return `
+            <div class="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200 space-y-1">
+              <div class="font-bold text-[11px] text-[#0038ff] border-b border-slate-200 pb-0.5 mb-1">${l}</div>
+              <div class="grid grid-cols-2 gap-1">
+                <div>
+                  <span class="text-[10px] text-slate-400 block">สูง(ซม.):</span>
+                  <input type="number" step="any" value="${r[k]?.height??''}" oninput="updateT7Field('${r.id}', '${k}', 'height', this.value, true, this)" class="mini-sub-input text-center">
+                  <div class="viewer-text text-xs font-bold text-[#0038ff] text-center">${hVal}</div>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-400 block">ใบ:</span>
+                  <input type="number" value="${r[k]?.leaves??''}" oninput="updateT7Field('${r.id}', '${k}', 'leaves', this.value, true, this)" class="mini-sub-input text-center">
+                  <div class="viewer-text text-xs font-semibold text-center">${lVal}</div>
+                </div>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">สี:</span>
+                <input type="text" value="${r[k]?.color??''}" oninput="updateT7Field('${r.id}', '${k}', 'color', this.value, false, this)" class="mini-sub-input">
+                <div class="viewer-text text-xs">${cVal}</div>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">สมบูรณ์:</span>
+                <input type="text" value="${r[k]?.health??''}" oninput="updateT7Field('${r.id}', '${k}', 'health', this.value, false, this)" class="mini-sub-input">
+                <div class="viewer-text text-xs">${hlVal}</div>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">ชื้น(%):</span>
+                <input type="number" step="any" value="${r[k]?.moisture??''}" oninput="updateT7Field('${r.id}', '${k}', 'moisture', this.value, true, this)" class="mini-sub-input text-center">
+                <div class="viewer-text text-xs font-mono text-blue-700 text-center">${msVal}</div>
+              </div>
+            </div>`;
+        };
         return `<tr><td class="text-center bg-emerald-50/40"><div class="font-bold text-emerald-800 text-xs">ครั้งที่ ${r.round}</div><div class="text-[11px] text-slate-500 mt-1">${formatThaiDate(r.date)}</div></td><td>${m('f1','สูตร 1')}</td><td>${m('f2','สูตร 2')}</td><td>${m('f3','สูตร 3')}</td><td>${m('fc','ชุดควบคุม')}</td>${makeDeleteBtn('t7', r.id)}</tr>`;
       }).join('');
     }
@@ -1158,7 +1892,7 @@
     function renderTableT12() { document.getElementById('tbodyT12').innerHTML = appData.t12.map(r => `<tr><td>${makeInput('t12', r.id, 'formula', r.formula, 'text', 'font-bold text-slate-800')}</td><td>${makeInput('t12', r.id, 'waterScore', r.waterScore, 'text', 'text-center')}</td><td>${makeInput('t12', r.id, 'strengthScore', r.strengthScore, 'text', 'text-center')}</td><td>${makeInput('t12', r.id, 'growthScore', r.growthScore, 'text', 'text-center')}</td><td>${makeInput('t12', r.id, 'degradeScore', r.degradeScore, 'text', 'text-center')}</td><td>${makeInput('t12', r.id, 'overallRank', r.overallRank, 'text', 'text-center font-bold text-indigo-700 bg-indigo-50/50')}</td>${makeDeleteBtn('t12', r.id)}</tr>`).join(''); }
     function addRowT12() { appData.t12.push({ id: 't12_'+Date.now(), formula: `สูตรที่ ${appData.t12.length + 1}`, waterScore: "-", strengthScore: "-", growthScore: "-", degradeScore: "-", overallRank: "-" }); renderTableT12(); saveToStorage(); }
 
-    function renderTableT13() { document.getElementById('tbodyT13').innerHTML = appData.t13.map(r => `<tr><td>${makeInput('t13', r.id, 'formula', r.formula, 'text', 'font-bold text-slate-800')}</td><td>${makeInput('t13', r.id, 'materialCost', r.materialCost, 'number', 'text-center font-bold')}</td><td>${makeInput('t13', r.id, 'yieldPots', r.yieldPots, 'number', 'text-center')}</td><td id="t13_cost_${r.id}" class="text-center font-bold font-mono text-amber-800 bg-amber-50/60">฿${(r.costPerPot || 0).toFixed(2)}</td><td>${makeInput('t13', r.id, 'feasibility', r.feasibility)}</td>${makeDeleteBtn('t13', r.id)}</tr>`).join(''); }
+    function renderTableT13() { document.getElementById('tbodyT13').innerHTML = appData.t13.map(r => `<tr><td>${makeInput('t13', r.id, 'formula', r.formula, 'text', 'font-bold text-slate-800')}</td><td>${makeInput('t13', r.id, 'materialCost', r.materialCost, 'number', 'text-center font-bold')}</td><td>${makeInput('t13', r.id, 'yieldPots', r.yieldPots, 'number', 'text-center')}</td><td id="t13_cost_${r.id}" class="text-center font-bold font-mono text-amber-800 bg-amber-50/60">฿${Number(r.costPerPot || 0).toFixed(2)}</td><td>${makeInput('t13', r.id, 'feasibility', r.feasibility)}</td>${makeDeleteBtn('t13', r.id)}</tr>`).join(''); }
     function addRowT13() { appData.t13.push({ id: 't13_'+Date.now(), formula: `สูตรที่ ${appData.t13.length + 1}`, materialCost: 0, yieldPots: 1, costPerPot: 0, feasibility: "-" }); renderTableT13(); saveToStorage(); }
 
     function renderBudgetSection() {
@@ -1170,20 +1904,55 @@
         let b = '<span class="text-slate-400">-</span>';
         if (e.receipt) b = `<button onclick="viewReceipt('${e.id}')" class="px-2 py-1 rounded bg-rose-50 text-rose-700 text-[11px] font-bold inline-flex items-center gap-1"><i class="fa-solid fa-image"></i> สลิป</button>`;
         else if (e.driveUrl) b = `<a href="${e.driveUrl}" target="_blank" class="px-2 py-1 rounded bg-blue-50 text-blue-700 text-[11px] font-bold inline-flex items-center gap-1"><i class="fa-solid fa-link"></i> ลิงก์</a>`;
-        return `<tr><td class="font-mono text-xs font-bold text-rose-800"><input type="text" value="${e.code||''}" oninput="updateExpenseField('${e.id}','code',this.value)" class="cell-input text-xs font-bold"></td><td class="text-xs"><input type="date" value="${e.date||''}" oninput="updateExpenseField('${e.id}','date',this.value)" class="cell-input text-xs"></td><td><select onchange="updateExpenseField('${e.id}','category',this.value)" class="cell-input text-xs font-bold text-center"><option value="A" ${e.category==='A'?'selected':''}>A</option><option value="B" ${e.category==='B'?'selected':''}>B</option><option value="C" ${e.category==='C'?'selected':''}>C</option><option value="D" ${e.category==='D'?'selected':''}>D</option><option value="E" ${e.category==='E'?'selected':''}>E</option></select></td><td><input type="text" value="${e.item||''}" oninput="updateExpenseField('${e.id}','item',this.value)" class="cell-input"></td><td><input type="number" value="${e.qty||1}" oninput="updateExpenseField('${e.id}','qty',this.value,true)" class="cell-input text-center"></td><td><input type="number" step="0.01" value="${e.price||0}" oninput="updateExpenseField('${e.id}','price',this.value,true)" class="cell-input text-right font-mono"></td><td id="exp_total_${e.id}" class="text-right font-mono font-bold text-rose-800 bg-rose-50/40">฿${Number(e.total).toFixed(2)}</td><td class="text-center print:hidden">${b}</td><td class="text-center print:hidden"><button onclick="confirmDeleteExpense('${e.id}')" class="text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash-can"></i></button></td></tr>`;
+        return `
+          <tr>
+            <td class="font-mono text-xs font-bold text-rose-800">
+              <input type="text" value="${e.code||''}" oninput="updateExpenseField('${e.id}','code',this.value,false,this)" class="cell-input text-xs font-bold">
+              <div class="viewer-text font-mono text-xs font-bold text-[#0038ff]">${e.code||'-'}</div>
+            </td>
+            <td class="text-xs">
+              <input type="date" value="${e.date||''}" oninput="updateExpenseField('${e.id}','date',this.value,false,this)" class="cell-input text-xs">
+              <div class="viewer-text text-xs text-slate-600">${formatThaiDate(e.date)}</div>
+            </td>
+            <td class="text-center">
+              <select onchange="updateExpenseField('${e.id}','category',this.value,false,this)" class="cell-input text-xs font-bold text-center">
+                <option value="A" ${e.category==='A'?'selected':''}>A</option>
+                <option value="B" ${e.category==='B'?'selected':''}>B</option>
+                <option value="C" ${e.category==='C'?'selected':''}>C</option>
+                <option value="D" ${e.category==='D'?'selected':''}>D</option>
+                <option value="E" ${e.category==='E'?'selected':''}>E</option>
+              </select>
+              <div class="viewer-text text-xs font-bold text-center text-[#0038ff]">${e.category||'-'}</div>
+            </td>
+            <td>
+              <input type="text" value="${e.item||''}" oninput="updateExpenseField('${e.id}','item',this.value,false,this)" class="cell-input">
+              <div class="viewer-text font-medium text-slate-800">${e.item||'-'}</div>
+            </td>
+            <td class="text-center">
+              <input type="number" value="${e.qty||1}" oninput="updateExpenseField('${e.id}','qty',this.value,true,this)" class="cell-input text-center">
+              <div class="viewer-text text-center font-mono">${e.qty||1}</div>
+            </td>
+            <td class="text-right">
+              <input type="number" step="0.01" value="${e.price||0}" oninput="updateExpenseField('${e.id}','price',this.value,true,this)" class="cell-input text-right font-mono">
+              <div class="viewer-text text-right font-mono">฿${Number(e.price||0).toFixed(2)}</div>
+            </td>
+            <td id="exp_total_${e.id}" class="text-right font-mono font-bold text-rose-800 bg-rose-50/40">฿${Number(e.total).toFixed(2)}</td>
+            <td class="text-center print:hidden">${b}</td>
+            <td class="text-center editor-only-btn print:hidden"><button onclick="confirmDeleteExpense('${e.id}')" class="text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash-can"></i></button></td>
+          </tr>`;
       }).join('');
     }
     function updateBudgetTotal(val) { appData.budgetTotal = Number(val) || 0; saveToStorage(); renderBudgetSection(); }
     function autoGenerateExpenseCode() {
       const d = document.getElementById('newExpDate').value, c = document.getElementById('newExpCategory').value;
       if(!d||!c)return; const pt=d.split('-'); const px=`${pt[2]}/${pt[1]}/${pt[0].slice(-2)}-${c}-`;
-      const m = Math.max(0, ...appData.expenses.filter(e=>e.code?.startsWith(px)).map(e=>parseInt(e.code.split('-')[2])||0));
+      const m = Math.max(0, ...(appData.expenses||[]).filter(e=>e.code?.startsWith(px)).map(e=>parseInt(e.code.split('-')[2])||0));
       document.getElementById('newExpCode').value = px+String(m+1).padStart(2,'0');
     }
     function calcNewExpenseTotal() { const q=Number(document.getElementById('newExpQty').value)||0, p=Number(document.getElementById('newExpPrice').value)||0; document.getElementById('newExpTotal').value = (q*p).toFixed(2); }
     
     function compressImageFile(file, maxWidth = 600, quality = 0.5) {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         const reader = new FileReader(); reader.readAsDataURL(file);
         reader.onload = (e) => { const img = new Image(); img.src = e.target.result; img.onload = () => { const cvs = document.createElement('canvas'); let w=img.width, h=img.height; if(w>maxWidth){h=Math.round((h*maxWidth)/w); w=maxWidth;} cvs.width=w; cvs.height=h; const ctx=cvs.getContext('2d'); ctx.drawImage(img,0,0,w,h); resolve(cvs.toDataURL('image/jpeg', quality)); }; };
       });
@@ -1205,19 +1974,66 @@
       
       document.getElementById('newExpItem').value=''; document.getElementById('newExpQty').value='1'; document.getElementById('newExpPrice').value=''; document.getElementById('newExpTotal').value='0.00'; document.getElementById('newExpDriveUrl').value=''; document.getElementById('newExpReceiptFile').value='';
       autoGenerateExpenseCode(); renderBudgetSection();
-      await saveToCloud(true, true); // force save
+      await saveToCloud(true, true);
     }
 
     function confirmDeleteExpense(id) { showConfirmModal("ยืนยันลบรายการนี้?", () => { appData.expenses = appData.expenses.filter(e=>e.id!==id); manualSaveAll(); renderBudgetSection(); }); }
-    function viewReceipt(id) { const e = appData.expenses.find(x=>x.id===id); if(e&&e.receipt){ document.getElementById('lightboxTitle').innerText = e.item; document.getElementById('lightboxImage').src = e.receipt; document.getElementById('receiptLightboxModal').classList.remove('hidden'); document.getElementById('receiptLightboxModal').classList.add('flex'); } }
-    function closeReceiptLightbox() { document.getElementById('receiptLightboxModal').classList.add('hidden'); document.getElementById('receiptLightboxModal').classList.remove('flex'); }
+
+    function dataURLtoBlob(dataurl) {
+      try {
+        const arr = dataurl.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) u8arr[n] = bstr.charCodeAt(n);
+        return new Blob([u8arr], { type: mime });
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function viewReceipt(id) {
+      const e = appData.expenses.find(x => x.id === id);
+      if (e && e.receipt) {
+        if (activeBlobUrl) {
+          URL.revokeObjectURL(activeBlobUrl);
+          activeBlobUrl = null;
+        }
+        const blob = dataURLtoBlob(e.receipt);
+        const tempUrl = blob ? URL.createObjectURL(blob) : e.receipt;
+        if (blob) activeBlobUrl = tempUrl;
+
+        document.getElementById('lightboxTitle').innerText = e.item;
+        document.getElementById('lightboxImage').src = tempUrl;
+        document.getElementById('lightboxTempLink').href = tempUrl;
+        document.getElementById('receiptLightboxModal').classList.remove('hidden');
+        document.getElementById('receiptLightboxModal').classList.add('flex');
+      }
+    }
+
+    function closeReceiptLightbox() {
+      document.getElementById('receiptLightboxModal').classList.add('hidden');
+      document.getElementById('receiptLightboxModal').classList.remove('flex');
+      if (activeBlobUrl) {
+        URL.revokeObjectURL(activeBlobUrl);
+        activeBlobUrl = null;
+      }
+    }
 
     function renderWaterChart() {
       const ctx = document.getElementById('chartWaterRetention'); if (!ctx) return;
       if (chartWaterInstance) chartWaterInstance.destroy();
+      const bgColors = isEditorRole
+        ? ['rgba(22,163,74,0.75)','rgba(59,130,246,0.75)','rgba(245,158,11,0.75)','rgba(139,92,246,0.75)']
+        : ['rgba(0,56,255,0.88)','rgba(37,99,235,0.82)','rgba(59,130,246,0.80)','rgba(96,165,250,0.80)'];
+      const borderColors = isEditorRole
+        ? ['#15803d','#2563eb','#d97706','#7c3aed']
+        : ['#0038ff','#1d4ed8','#2563eb','#3b82f6'];
+
       chartWaterInstance = new Chart(ctx, {
-        type: 'bar', data: { labels: (appData.t3||[]).map(r=>r.formula||'สูตร'), datasets: [{ label: '% อุ้มน้ำ', data: (appData.t3||[]).map(r=>Number(r.avg||0)), backgroundColor: ['rgba(59,130,246,0.7)','rgba(16,185,129,0.7)','rgba(245,158,11,0.7)','rgba(139,92,246,0.7)'], borderColor: ['#2563eb','#059669','#d97706','#7c3aed'], borderWidth: 1.5, borderRadius: 8 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { max: 100 } } }
+        type: 'bar', data: { labels: (appData.t3||[]).map(r=>r.formula||'สูตร'), datasets: [{ label: '% อุ้มน้ำ', data: (appData.t3||[]).map(r=>Number(r.avg||0)), backgroundColor: bgColors, borderColor: borderColors, borderWidth: 1.5, borderRadius: 10 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
       });
     }
 
@@ -1244,8 +2060,8 @@
         iconBg.className = 'w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0 shadow-inner';
       }
 
-      toast.style.animation = 'none'; // reset
-      toast.offsetHeight; // trigger reflow
+      toast.style.animation = 'none';
+      toast.offsetHeight;
       toast.style.animation = 'dropBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
 
       setTimeout(() => {
@@ -1266,7 +2082,7 @@
     function confirmResetDefaults() { toggleBackupMenu(); showConfirmModal("ยืนยันการรีเซ็ตกลับเป็นค่าเริ่มต้น?", () => { appData = JSON.parse(JSON.stringify(DEFAULT_JSTP_DATA)); manualSaveAll(); renderAllTables(); renderBudgetSection(); renderWaterChart(); }); }
   </script>
   
-  <footer class="max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-2 no-print">
+  <footer class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-2 no-print">
     <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-6 text-center">
       <div class="flex items-center justify-center gap-2 text-slate-700 mb-2">
         <i class="fa-solid fa-shield-halved text-emerald-600"></i>
